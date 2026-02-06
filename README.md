@@ -4,7 +4,7 @@
 <h1 align="center">OpenClaw QQ Plugin</h1>
 
 <p align="center">
-  <strong>让你的 AI Agent 接入 QQ 个人号 —— 支持文字、图片、文件、语音、主动推送、定时任务</strong>
+  <strong>让你的 OpenClaw 接入 QQ 个人号 —— 支持文字、图片、文件、语音、主动推送、定时任务</strong>
 </p>
 
 <p align="center">
