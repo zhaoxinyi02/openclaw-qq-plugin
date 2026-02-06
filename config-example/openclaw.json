@@ -1,0 +1,23 @@
+{
+  "$schema": "https://openclaw.dev/schema/openclaw.json",
+  "plugins": {
+    "entries": {
+      "qq": {
+        "enabled": true
+      }
+    }
+  },
+  "channels": {
+    "qq": {
+      "enabled": true,
+      "wsUrl": "ws://127.0.0.1:3001",
+      "accessToken": "your_napcat_token_here"
+    }
+  },
+  "gateway": {
+    "port": 18789,
+    "controlUi": {
+      "allowInsecureAuth": true
+    }
+  }
+}
