@@ -1,0 +1,16 @@
+[Unit]
+Description=QQ Event Monitor Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/qq-tools
+ExecStart=/usr/bin/node /root/qq-tools/event-monitor.js
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/qq-event-monitor.log
+StandardError=append:/var/log/qq-event-monitor.log
+
+[Install]
+WantedBy=multi-user.target
