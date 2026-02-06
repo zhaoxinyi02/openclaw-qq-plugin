@@ -1,0 +1,16 @@
+{
+  "name": "openclaw-qq-tools",
+  "version": "1.0.0",
+  "description": "Utility scripts for OpenClaw QQ integration: proactive messaging, scheduled tasks, server monitoring",
+  "main": "send-message.js",
+  "scripts": {
+    "send": "node send-message.js",
+    "monitor": "node event-monitor.js",
+    "cron": "node simple-cron.js",
+    "greetings": "node random-greetings.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "license": "MIT"
+}
