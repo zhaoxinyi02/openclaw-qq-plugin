@@ -1,17 +1,14 @@
-感谢你非常详细的问题报告和建议！🙏
+非常感谢你的详细反馈！🎉
 
-你的分析完全正确，我已经按照你的建议进行了修改：
+你的问题分析非常到位，我已经按照你的建议进行了修复：
 
 ## 已完成的改进
 
-### ✅ 1. 修复代码 - 自动处理 Token 认证
+### 1. ✅ 修改代码自动处理 Token
 
-修改了 `plugin/src/client.ts` 的 `connect()` 方法，现在会：
-- 保留标准 OneBot 的 Header 认证方式（`Authorization: Bearer <token>`）
-- **自动**将 `accessToken` 添加到 WebSocket URL 参数（兼容 NapCat）
-- 智能检测 URL 中是否已存在 `access_token`，避免重复添加
+已修改 `plugin/src/client.ts` 的 `connect()` 方法，现在会自动将 `accessToken` 添加到 URL 参数中，同时保留 Header 方式以兼容标准 OneBot 实现。
 
-这样用户只需要在配置文件中正常设置 `accessToken`，不需要手动拼接 URL 了：
+用户现在只需要正常配置即可，不需要手动拼接 URL：
 
 ```json
 {
@@ -24,19 +21,21 @@
 }
 ```
 
-### ✅ 2. 补充文档
+插件会自动处理成 `ws://127.0.0.1:3001?access_token=your_token`
 
-在 README.md 中添加了：
-- **NapCat 配置注意事项**章节，详细说明 Token 认证和 Docker Host 绑定问题
-- **常见问题（FAQ）**新增"连接失败，持续显示 ECONNRESET 错误"条目
+### 2. ✅ 补充 README 文档
 
-## 📝 Pull Request
+已在 README 中添加：
+- **NapCat 配置注意事项**章节，说明 Token 认证和 Docker Host 绑定问题
+- **常见问题**中新增"连接失败 ECONNRESET"的排查指南
 
-已创建 PR 来实现这些改进，可以在这里查看详细的代码修改：
+## Pull Request
+
+相关修改已提交到 PR，请查看：
 https://github.com/copilot/tasks/pull/PR_kwDORKCpgc7CIj-c
 
 ## 下一步
 
-PR 合并后，我会通知你测试验证。如果一切正常，我会关闭这个 issue。
+PR 合并后，麻烦你测试一下修改后的版本，确认问题是否彻底解决。如果一切正常，我会关闭这个 issue。
 
-再次感谢你的详细反馈，这对改进项目非常有帮助！如果你有任何其他建议或问题，欢迎随时提出。
+再次感谢你的贡献，这对其他用户会非常有帮助！👍
