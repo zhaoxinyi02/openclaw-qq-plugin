@@ -148,6 +148,43 @@ npm install --omit=dev
 
 > 完整配置示例见 [config-example/openclaw.json](config-example/openclaw.json)
 
+#### ⚠️ NapCat 配置注意事项
+
+**1. Token 认证**
+
+插件会自动将 `accessToken` 添加到 WebSocket URL 中（NapCat 要求），你只需要正常配置即可：
+
+```json
+{
+  "channels": {
+    "qq": {
+      "wsUrl": "ws://127.0.0.1:3001",
+      "accessToken": "your_token_here"
+    }
+  }
+}
+```
+
+如果你的 NapCat 没有设置 Token，可以省略 `accessToken` 字段。
+
+**2. Docker 部署 Host 绑定**
+
+如果 NapCat 使用 Docker 部署，需要将 NapCat 的 **WebSocket Server Host** 设置为 `0.0.0.0`（而不是默认的 `127.0.0.1`），否则宿主机上的 OpenClaw 无法连接。
+
+**原因**：Docker 容器内的 `127.0.0.1` 只监听容器内部，即使映射了端口（如 `0.0.0.0:3001->3001/tcp`），宿主机也无法访问。
+
+**解决方法**：在 NapCat 的 WebSocket 配置中修改：
+
+```json
+{
+  "ws": {
+    "enable": true,
+    "host": "0.0.0.0",
+    "port": 3001
+  }
+}
+```
+
 ### 第三步：修改关键参数
 
 **必须修改的地方**（搜索 `TODO` 即可找到）：
@@ -255,6 +292,29 @@ sudo systemctl enable --now qq-event-monitor.service
 ---
 
 ## 常见问题
+
+<details>
+<summary><b>连接 NapCat 时报 ECONNRESET 错误</b></summary>
+
+**原因**：Token 认证方式不兼容，或 Docker 网络配置问题。
+
+**解决方法**：
+
+1. **Token 认证**：插件已自动兼容 NapCat，只需正常配置 `accessToken` 即可（见"NapCat 配置注意事项"）
+
+2. **Docker 网络**：如果 NapCat 在 Docker 中运行，需要：
+   - 将 NapCat WebSocket Host 设置为 `0.0.0.0`（而非 `127.0.0.1`）
+   - 确保端口映射正确（如 `-p 3001:3001`）
+
+3. **验证连接**：
+   ```bash
+   # 测试 WebSocket 端口是否可访问
+   curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
+     -H "Sec-WebSocket-Key: test" -H "Sec-WebSocket-Version: 13" \
+     http://127.0.0.1:3001
+   ```
+
+</details>
 
 <details>
 <summary><b>NapCat 无法访问文件服务器（文件/图片发送失败）</b></summary>

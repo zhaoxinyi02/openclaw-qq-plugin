@@ -21,12 +21,22 @@ export class OneBotClient extends EventEmitter {
   }
 
   connect() {
+    let wsUrl = this.options.wsUrl;
     const headers: Record<string, string> = {};
+    
     if (this.options.accessToken) {
+      // 支持标准 OneBot Header 认证
       headers["Authorization"] = "Bearer " + this.options.accessToken;
+      
+      // 自动添加 access_token 到 URL 参数（NapCat 需要）
+      // 如果用户已经手动添加了 access_token，则不重复添加
+      if (!wsUrl.includes('access_token=')) {
+        const separator = wsUrl.includes('?') ? '&' : '?';
+        wsUrl = wsUrl + separator + 'access_token=' + encodeURIComponent(this.options.accessToken);
+      }
     }
 
-    this.ws = new WebSocket(this.options.wsUrl, { headers });
+    this.ws = new WebSocket(wsUrl, { headers });
 
     this.ws.on("open", () => {
       this.isAlive = true;
