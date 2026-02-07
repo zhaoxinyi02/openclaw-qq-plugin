@@ -1,0 +1,42 @@
+感谢你非常详细的问题报告和建议！🙏
+
+你的分析完全正确，我已经按照你的建议进行了修改：
+
+## 已完成的改进
+
+### ✅ 1. 修复代码 - 自动处理 Token 认证
+
+修改了 `plugin/src/client.ts` 的 `connect()` 方法，现在会：
+- 保留标准 OneBot 的 Header 认证方式（`Authorization: Bearer <token>`）
+- **自动**将 `accessToken` 添加到 WebSocket URL 参数（兼容 NapCat）
+- 智能检测 URL 中是否已存在 `access_token`，避免重复添加
+
+这样用户只需要在配置文件中正常设置 `accessToken`，不需要手动拼接 URL 了：
+
+```json
+{
+  "channels": {
+    "qq": {
+      "wsUrl": "ws://127.0.0.1:3001",
+      "accessToken": "your_token"
+    }
+  }
+}
+```
+
+### ✅ 2. 补充文档
+
+在 README.md 中添加了：
+- **NapCat 配置注意事项**章节，详细说明 Token 认证和 Docker Host 绑定问题
+- **常见问题（FAQ）**新增"连接失败，持续显示 ECONNRESET 错误"条目
+
+## 📝 Pull Request
+
+已创建 PR 来实现这些改进，可以在这里查看详细的代码修改：
+https://github.com/copilot/tasks/pull/PR_kwDORKCpgc7CIj-c
+
+## 下一步
+
+PR 合并后，我会通知你测试验证。如果一切正常，我会关闭这个 issue。
+
+再次感谢你的详细反馈，这对改进项目非常有帮助！如果你有任何其他建议或问题，欢迎随时提出。
