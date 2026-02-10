@@ -237,12 +237,6 @@ git pull && docker compose up -d --build
 - [danni-cool/wechatbot-webhook](https://github.com/danni-cool/wechatbot-webhook) — 微信 Webhook 机器人
 - [OpenClaw](https://openclaw.ai) — AI 助手引擎
 
-## ⭐ Star History
-
-如果本项目对你有帮助，请给个 Star 支持一下！
-
-[![Star History Chart](https://api.star-history.com/svg?repos=zhaoxinyi02/openclaw-im-manager&type=Date)](https://star-history.com/#zhaoxinyi02/openclaw-im-manager&Date)
-
 ## 📄 License
 
 [MIT](LICENSE) © 2026
