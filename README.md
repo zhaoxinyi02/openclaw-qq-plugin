@@ -79,7 +79,7 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/你的用户名/openclaw-im-manager.git
+git clone https://github.com/zhaoxinyi02/openclaw-im-manager.git
 cd openclaw-im-manager
 ```
 
