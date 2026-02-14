@@ -4,11 +4,11 @@
 
 **OpenClaw 智能管理面板 — 比官方控制台更强大的可视化管理工具**
 
-多通道接入 · 技能管理 · 定时任务 · 深度配置 · Docker 一键部署
+多通道接入 · 多模型配置 · 技能中心 · 版本管理 · 环境检测 · Docker 一键部署
 
 [![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-red?style=flat-square)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen?style=flat-square&logo=docker&logoColor=white)](docker-compose.yml)
-[![Version](https://img.shields.io/badge/version-4.0.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
+[![Version](https://img.shields.io/badge/version-4.1.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/zhaoxinyi02/ClawPanel?style=flat-square&logo=github)](https://github.com/zhaoxinyi02/ClawPanel/stargazers)
 
 [快速开始](#-快速开始) · [功能特性](#-主要功能) · [效果预览](#-效果预览) · [API 文档](docs/API.md) · [部署指南](docs/DEPLOYMENT.md)
@@ -25,20 +25,26 @@
 > This project is for **learning and research purposes only**. **Commercial use is strictly prohibited.** Use at your own risk. See [full disclaimer](DISCLAIMER.md).
 
 > [!NOTE]
-> **v4.0 重大升级**：项目从 `openclaw-im-manager` 升级为 **ClawPanel**，从单纯的 IM 管理工具进化为完整的 OpenClaw 智能管理面板。
+> **v4.1 重大升级**：项目从 `openclaw-im-manager` 升级为 **ClawPanel**，从单纯的 IM 管理工具进化为完整的 OpenClaw 智能管理面板。新增 20+ 通道支持、多模型提供商配置、版本管理、环境检测、文档管理等功能。
 > 旧版本请查看 [v3.0.0 Tag](https://github.com/zhaoxinyi02/ClawPanel/releases/tag/v3.0.0)。
 
 ## ✨ 主要功能
 
-### 📊 仪表盘
-实时总览：活跃通道数、AI 模型、运行时间、内存占用、今日消息统计、通道状态卡片、最近活动流。
+### 📊 智能仪表盘
+动态展示已连接通道卡片、AI 模型状态、运行时间、内存占用、今日消息统计、最近活动流。**仅显示已连接的通道**，未连接的通道不再占位。
+
+<img src="img/dashboard.png" width="700"/>
 
 ### 📋 活动日志
-增强版日志系统：按来源筛选（QQ / Bot回复 / 微信 / 系统）、按类型筛选（文本 / 媒体 / 表情）、关键词搜索、一键导出。
+增强版日志系统：按来源筛选（QQ / Bot回复 / 微信 / 系统）、按类型筛选（文本 / 媒体 / 表情）、关键词搜索、一键导出 JSON。
 
-### 📡 通道管理
-支持 **8 种通道**的统一配置：
-- **QQ (NapCat)** — 扫码/快速/账密登录，唤醒概率、触发词、戳一戳回复等完整配置
+<img src="img/activity-log.png" width="700"/>
+
+### 📡 通道管理（20+ 通道）
+支持 **20+ 种通道**的统一配置，分为内置通道和插件通道两大类：
+
+**内置通道：**
+- **QQ (NapCat)** — 扫码/快速/账密登录，唤醒概率、触发词、戳一戳回复、**QQ 审核请求**集成
 - **微信** — 扫码登录，基于 wechatbot-webhook
 - **Telegram** — Bot Token + Webhook
 - **Discord** — Bot Token + Guild 配置
@@ -47,43 +53,62 @@
 - **Signal** — signal-cli REST API
 - **Google Chat** — 服务账号 + Webhook
 
-### ⚡ 技能中心
-管理 OpenClaw 技能插件：列表展示、一键启用/禁用、搜索筛选、ClawHub 商店入口。
+**插件通道：**
+- **飞书 / Lark** · **钉钉** · **企业微信** · **QQ 官方 Bot** · **IRC** · **Mattermost** · **Microsoft Teams** · **LINE** · **Matrix** · **Twitch** · **BlueBubbles** · **WebChat**
+
+> 已连接的通道自动置顶显示，QQ 审核请求直接集成在 QQ 通道配置页面中。
+
+<img src="img/channels.png" width="700"/>
+
+### ⚡ 技能中心 + ClawHub 商店
+- **已安装技能**：从服务端实时扫描，一键启用/禁用，搜索筛选
+- **ClawHub 商店**：浏览 13+ 可安装技能，一键获取安装命令
+
+<img src="img/skills.png" width="700"/>
 
 ### ⏰ 定时任务
-创建和管理定时执行任务：Cron 表达式配置、启用/暂停/删除、运行状态追踪、消息内容编辑。
+从 `cron/jobs.json` 读取真实定时任务：Cron 表达式配置、启用/暂停/删除、运行状态追踪、消息内容编辑。
 
-### ⚙️ 系统配置
-OpenClaw 深度可视化配置，9 大分组：
-- 🧠 **模型配置** — 主模型、上下文Token、最大输出
-- 👤 **身份设置** — 助手名称、头像、主题色
-- 💬 **消息配置** — 系统提示词、历史消息数、消息长度
-- 🔧 **工具配置** — 媒体理解、网页搜索
-- 🌐 **网关配置** — 端口、认证模式
-- 🪝 **Hooks** — Webhook 配置
-- 👁️ **会话配置** — 自动压缩、修剪
-- 🌍 **浏览器** — 无头模式
-- 🔑 **认证密钥** — API Keys 管理
+<img src="img/cronjobs.png" width="700"/>
 
-### 📁 工作区 & 审核
-文件管理、好友/入群请求审核等原有功能完整保留。
+### ⚙️ 系统配置（6 大模块）
 
-## 📸 效果预览
+全新 6 标签页深度配置：
 
-<table>
-  <tr>
-    <td align="center"><b>仪表盘</b><br/><img src="img/dashboard.png" width="400"/></td>
-    <td align="center"><b>活动日志</b><br/><img src="img/activity-log.png" width="400"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>通道管理</b><br/><img src="img/channels.png" width="400"/></td>
-    <td align="center"><b>技能中心</b><br/><img src="img/skills.png" width="400"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>定时任务</b><br/><img src="img/cronjobs.png" width="400"/></td>
-    <td align="center"><b>系统配置</b><br/><img src="img/config.png" width="400"/></td>
-  </tr>
-</table>
+#### 🧠 模型配置
+多模型提供商管理，支持 **8+ 主流 AI 厂商**一键填充：
+- OpenAI · Anthropic · Google · DeepSeek · NVIDIA NIM · Groq · Together AI · OpenRouter
+- 每个提供商可配置 Base URL、API Key、API 类型、模型列表
+- 快捷添加已知模型（GPT-4o、Claude Sonnet 4.5、Gemini 2.0 等）
+
+<img src="img/config-models.png" width="700"/>
+
+#### 👤 身份 & 消息
+助手名称、头像、主题色、系统提示词、历史消息数、Agent 默认设置（上下文Token、最大输出、并发数、压缩模式）。
+
+#### 🔧 通用配置
+网关配置、工具配置（媒体理解/网页搜索）、Hooks、会话配置（自动压缩/修剪）、认证密钥（API Keys）、原始 JSON 查看器。
+
+#### 📦 版本管理
+- 当前版本 / 最新版本对比
+- 更新检测与提示
+- **配置备份与恢复**：一键备份 openclaw.json，恢复前自动备份当前配置
+
+<img src="img/config-version.png" width="700"/>
+
+#### 🖥️ 环境检测
+自动检测运行环境：
+- 操作系统信息（平台、架构、内核、CPU、内存）
+- 软件版本检测（Node.js、Docker、Git、OpenClaw、npm）
+- 快速安装指南
+
+<img src="img/config-env.png" width="700"/>
+
+#### 📄 文档管理
+浏览和编辑 OpenClaw 目录下的 Markdown 文档，内置编辑器，一键保存。
+
+### 📁 工作区
+文件浏览器：查看、编辑、创建 OpenClaw 工作区文件。
 
 ## 🏗️ 架构
 
@@ -175,6 +200,8 @@ powershell -ExecutionPolicy Bypass -File setup-openclaw.ps1
 4. 左侧 **「通道管理」** → 选择微信 → 扫码登录
 5. 用另一个号给 Bot 发消息，收到 AI 回复即成功 🎉
 
+<img src="img/login.png" width="400"/>
+
 ## 📡 端口说明
 
 | 端口 | 服务 | 说明 |
@@ -246,6 +273,20 @@ git pull && docker compose up -d --build
 </details>
 
 ## 📋 更新日志
+
+### v4.1.0 — 全面功能扩展 (2026-02-14)
+- 🆕 **通道管理**：新增 20+ 通道支持（飞书/钉钉/企业微信/QQ官方Bot/IRC/Teams/LINE/Matrix/Twitch 等）
+- 🆕 **通道管理**：已连接通道自动置顶，QQ 审核请求集成到 QQ 通道页面
+- 🆕 **技能中心**：从服务端实时扫描已安装插件，ClawHub 商店列出 13+ 可安装技能
+- 🆕 **系统配置**：全新 6 标签页（模型/身份消息/通用/版本/环境/文档）
+- 🆕 **多模型配置**：支持 8+ AI 厂商（OpenAI/Anthropic/Google/DeepSeek/Groq/OpenRouter 等）
+- 🆕 **版本管理**：当前版本/最新版本对比、配置备份与恢复
+- 🆕 **环境检测**：自动检测 OS/软件版本，提供安装指南
+- 🆕 **文档管理**：浏览和编辑 OpenClaw 目录下的 MD 文档
+- 🆕 **定时任务**：从 cron/jobs.json 读取真实任务数据
+- 🆕 **新增 API**：`/system/env`、`/system/version`、`/system/backup`、`/system/skills` 等 10 个端点
+- 🧹 清理废弃页面（QQ.tsx/QQBot.tsx/QQLogin.tsx/WeChatLogin.tsx/Settings.tsx/OpenClawConfig.tsx/Requests.tsx）
+- 🧹 清理测试脚本和旧截图
 
 ### v4.0.0 — ClawPanel 智能管理面板 (2026-02-13)
 - 🆕 全新品牌：从 `openclaw-im-manager` 升级为 **ClawPanel**

@@ -1,4 +1,4 @@
-# OpenClaw Manager - OpenClaw 连接配置脚本 (Windows PowerShell)
+# ClawPanel - OpenClaw 连接配置脚本 (Windows PowerShell)
 # 支持 QQ + 微信双通道配置
 
 $ErrorActionPreference = "Stop"
@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $OpenClawConfig = "$env:USERPROFILE\.openclaw\openclaw.json"
 
 Write-Host "=========================================="
-Write-Host " OpenClaw Manager - 连接配置"
+Write-Host " ClawPanel - OpenClaw 连接配置"
 Write-Host "=========================================="
 
 if (-not (Test-Path $OpenClawConfig)) {
@@ -69,8 +69,7 @@ Write-Host " 配置完成！"
 Write-Host "=========================================="
 Write-Host ""
 Write-Host "接下来："
-Write-Host "  1. 访问管理后台 http://你的服务器IP:6199"
-Write-Host "  2. QQ 登录：在 QQ 登录页面扫码"
-Write-Host "  3. 微信登录：在微信登录页面扫码"
-Write-Host "  4. 用另一个 QQ/微信号发私聊消息测试 AI 回复"
+Write-Host "  1. 访问 ClawPanel http://你的服务器IP:6199"
+Write-Host "  2. 在「通道管理」中配置 QQ/微信登录"
+Write-Host "  3. 用另一个账号发消息测试 AI 回复"
 Write-Host ""

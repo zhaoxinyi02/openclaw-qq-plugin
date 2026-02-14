@@ -4,7 +4,7 @@ set -e
 trap "" SIGPIPE
 
 echo "=========================================="
-echo " OpenClaw QQ Manager - 一键部署启动"
+echo " ClawPanel - 一键部署启动"
 echo "=========================================="
 
 # === 1. Setup NapCat (from original entrypoint) ===
@@ -93,7 +93,7 @@ OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-/root/.openclaw/openclaw.json}"
 mkdir -p "${ADMIN_CONFIG_DIR}"
 
 if [ ! -f "${ADMIN_CONFIG_PATH}" ]; then
-    echo "[Manager] 创建管理后台配置..."
+    echo "[ClawPanel] 创建管理后台配置..."
     cat > "${ADMIN_CONFIG_PATH}" << EOF
 {
   "server": { "port": 6199, "host": "0.0.0.0", "token": "${ADMIN_TOKEN}" },
@@ -132,11 +132,11 @@ else
 fi
 
 # === 8. Start Manager backend (background) ===
-echo "[Manager] 启动管理后台..."
+echo "[ClawPanel] 启动管理后台..."
 cd /app/manager
 node server/dist/index.js &
 MANAGER_PID=$!
-echo "[Manager] PID: ${MANAGER_PID}"
+echo "[ClawPanel] PID: ${MANAGER_PID}"
 
 # === 9. Start QQ (NapCat) as main process ===
 echo "[NapCat] 启动 QQ..."

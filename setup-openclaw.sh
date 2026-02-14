@@ -1,5 +1,5 @@
 #!/bin/bash
-# OpenClaw Manager - OpenClaw 连接配置脚本
+# ClawPanel - OpenClaw 连接配置脚本
 # 支持 QQ + 微信双通道配置
 # 兼容 Linux / macOS
 
@@ -8,7 +8,7 @@ set -e
 OPENCLAW_CONFIG="${HOME}/.openclaw/openclaw.json"
 
 echo "=========================================="
-echo " OpenClaw Manager - 连接配置"
+echo " ClawPanel - OpenClaw 连接配置"
 echo "=========================================="
 
 # 检查 OpenClaw 配置文件
@@ -77,8 +77,7 @@ echo " 配置完成！"
 echo "=========================================="
 echo ""
 echo "接下来："
-echo "  1. 访问管理后台 http://你的服务器IP:6199"
-echo "  2. QQ 登录：在 QQ 登录页面扫码"
-echo "  3. 微信登录：在微信登录页面扫码"
-echo "  4. 用另一个 QQ/微信号发私聊消息测试 AI 回复"
+echo "  1. 访问 ClawPanel http://你的服务器IP:6199"
+echo "  2. 在「通道管理」中配置 QQ/微信登录"
+echo "  3. 用另一个账号发消息测试 AI 回复"
 echo ""

@@ -33,7 +33,7 @@ RUN cd web && npm run build
 COPY docker/ ./docker/
 RUN chmod +x /app/manager/docker/entrypoint.sh
 
-# Ports: 6099 (NapCat WebUI), 6199 (管理后台)
+# Ports: 6099 (NapCat WebUI), 6199 (ClawPanel)
 EXPOSE 6099 6199
 
 # Override the default entrypoint

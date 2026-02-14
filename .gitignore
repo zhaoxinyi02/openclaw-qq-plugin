@@ -11,4 +11,7 @@ web/dist/
 server/dist/
 docker/qq-plugin/node_modules/
 docs/CSDN-blog.md
+docs/blog-csdn.md
+docs/blog-xiaohongshu.md
+docs/xiaohongshu-blog.md
 demo/
