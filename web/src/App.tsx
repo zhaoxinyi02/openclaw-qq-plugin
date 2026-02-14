@@ -10,7 +10,6 @@ import Skills from './pages/Skills';
 import CronJobs from './pages/CronJobs';
 import SystemConfig from './pages/SystemConfig';
 import Workspace from './pages/Workspace';
-import Requests from './pages/Requests';
 
 export default function App() {
   const auth = useAuth();
@@ -35,7 +34,6 @@ export default function App() {
         <Route path="/cron" element={<CronJobs />} />
         <Route path="/config" element={<SystemConfig />} />
         <Route path="/workspace" element={<Workspace />} />
-        <Route path="/requests" element={<Requests />} />
       </Route>
       <Route path="/login" element={<Navigate to="/" />} />
       {/* Legacy redirects */}
@@ -44,6 +42,7 @@ export default function App() {
       <Route path="/wechat" element={<Navigate to="/channels" />} />
       <Route path="/openclaw" element={<Navigate to="/config" />} />
       <Route path="/settings" element={<Navigate to="/config" />} />
+      <Route path="/requests" element={<Navigate to="/channels" />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

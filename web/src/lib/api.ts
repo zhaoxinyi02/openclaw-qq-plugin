@@ -90,6 +90,16 @@ export const api = {
   workspacePreview: (filePath: string) => get('/workspace/preview?path=' + encodeURIComponent(filePath)),
   workspaceNotes: () => get('/workspace/notes'),
   workspaceSetNote: (filePath: string, note: string) => put('/workspace/notes', { path: filePath, note }),
+  // System
+  getSystemEnv: () => get('/system/env'),
+  getSystemVersion: () => get('/system/version'),
+  createBackup: () => post('/system/backup'),
+  getBackups: () => get('/system/backups'),
+  restoreBackup: (backupName: string) => post('/system/restore', { backupName }),
+  getSkills: () => get('/system/skills'),
+  getCronJobs: () => get('/system/cron'),
+  getDocs: () => get('/system/docs'),
+  saveDoc: (docPath: string, content: string) => put('/system/docs', { path: docPath, content }),
   // Event Log
   getEvents: (opts?: { limit?: number; offset?: number; source?: string; search?: string }) => {
     const params = new URLSearchParams();

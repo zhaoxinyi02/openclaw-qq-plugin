@@ -2,18 +2,17 @@ import { useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ScrollText, Radio, Sparkles, Clock, Settings,
-  Moon, Sun, LogOut, Menu, FolderOpen, UserCheck, Cat,
+  Moon, Sun, LogOut, Menu, FolderOpen, Cat,
 } from 'lucide-react';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: '仪表盘', group: 'main' },
-  { to: '/logs', icon: ScrollText, label: '活动日志', group: 'main' },
-  { to: '/channels', icon: Radio, label: '通道管理', group: 'main' },
-  { to: '/skills', icon: Sparkles, label: '技能中心', group: 'main' },
-  { to: '/cron', icon: Clock, label: '定时任务', group: 'main' },
-  { to: '/config', icon: Settings, label: '系统配置', group: 'main' },
-  { to: '/workspace', icon: FolderOpen, label: '工作区', group: 'extra' },
-  { to: '/requests', icon: UserCheck, label: '审核', group: 'extra' },
+  { to: '/', icon: LayoutDashboard, label: '仪表盘' },
+  { to: '/logs', icon: ScrollText, label: '活动日志' },
+  { to: '/channels', icon: Radio, label: '通道管理' },
+  { to: '/skills', icon: Sparkles, label: '技能中心' },
+  { to: '/cron', icon: Clock, label: '定时任务' },
+  { to: '/workspace', icon: FolderOpen, label: '工作区' },
+  { to: '/config', icon: Settings, label: '系统配置' },
 ];
 
 interface Props { onLogout: () => void; napcatStatus: any; wechatStatus?: any; }
@@ -38,8 +37,14 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus }: Props) 
     });
   };
 
-  const mainNav = navItems.filter(n => n.group === 'main');
-  const extraNav = navItems.filter(n => n.group === 'extra');
+  // Only show connected channels
+  const connectedChannels: { label: string; detail: string }[] = [];
+  if (napcatStatus?.connected) {
+    connectedChannels.push({ label: 'QQ', detail: `${napcatStatus.nickname || 'QQ'}${napcatStatus.selfId ? ` (${napcatStatus.selfId})` : ''}` });
+  }
+  if (wechatStatus?.connected) {
+    connectedChannels.push({ label: '微信', detail: wechatStatus.name || '已连接' });
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -58,27 +63,21 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus }: Props) 
           </div>
         </div>
 
-        {/* Channel status indicators */}
-        <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800/50 space-y-1">
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className={`w-1.5 h-1.5 rounded-full ${napcatStatus?.connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
-            <span className="text-gray-500 dark:text-gray-400 truncate">
-              {napcatStatus?.connected
-              ? `QQ: ${napcatStatus.nickname || 'QQ'}${napcatStatus.selfId ? ` (${napcatStatus.selfId})` : ''}`
-              : 'QQ 未连接'}
-            </span>
+        {/* Connected channel indicators — only show if any connected */}
+        {connectedChannels.length > 0 && (
+          <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800/50 space-y-1">
+            {connectedChannels.map(ch => (
+              <div key={ch.label} className="flex items-center gap-2 text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className="text-gray-500 dark:text-gray-400 truncate">{ch.label}: {ch.detail}</span>
+              </div>
+            ))}
           </div>
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className={`w-1.5 h-1.5 rounded-full ${wechatStatus?.connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
-            <span className="text-gray-500 dark:text-gray-400 truncate">
-              {wechatStatus?.connected ? `微信: ${wechatStatus.name || '已连接'}` : '微信 未连接'}
-            </span>
-          </div>
-        </div>
+        )}
 
-        {/* Main navigation */}
+        {/* Navigation */}
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-          {mainNav.map(({ to, icon: Icon, label }) => (
+          {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} end={to === '/'} onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 `flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-colors ${isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`
@@ -86,21 +85,6 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus }: Props) 
               <Icon size={16} />{label}
             </NavLink>
           ))}
-          {extraNav.length > 0 && (
-            <>
-              <div className="pt-2 pb-1 px-3">
-                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">其他</span>
-              </div>
-              {extraNav.map(({ to, icon: Icon, label }) => (
-                <NavLink key={to} to={to} onClick={() => setOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-colors ${isActive ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`
-                  }>
-                  <Icon size={16} />{label}
-                </NavLink>
-              ))}
-            </>
-          )}
         </nav>
 
         {/* Footer */}

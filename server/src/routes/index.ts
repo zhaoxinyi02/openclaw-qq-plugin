@@ -556,6 +556,239 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
     });
   }
 
+  // === System Info API ===
+  const OPENCLAW_DIR = process.env['OPENCLAW_CONFIG'] ? path.dirname(process.env['OPENCLAW_CONFIG']) : '/root/.openclaw';
+
+  // System environment detection
+  router.get('/system/env', auth, async (_req, res) => {
+    const { execSync } = await import('child_process');
+    const info: any = { os: {}, software: {} };
+    try { info.os.platform = process.platform; } catch {}
+    try { info.os.arch = process.arch; } catch {}
+    try { info.os.release = execSync('uname -r 2>/dev/null || echo unknown').toString().trim(); } catch {}
+    try { info.os.hostname = execSync('hostname 2>/dev/null || echo unknown').toString().trim(); } catch {}
+    try { info.os.totalMemMB = Math.round(require('os').totalmem() / 1024 / 1024); } catch {}
+    try { info.os.freeMemMB = Math.round(require('os').freemem() / 1024 / 1024); } catch {}
+    try { info.os.cpus = require('os').cpus().length; } catch {}
+    try { info.software.node = process.version; } catch {}
+    try { info.software.docker = execSync('docker --version 2>/dev/null || echo not installed').toString().trim(); } catch { info.software.docker = 'not installed'; }
+    try { info.software.git = execSync('git --version 2>/dev/null || echo not installed').toString().trim(); } catch { info.software.git = 'not installed'; }
+    try { info.software.openclaw = execSync('openclaw version 2>/dev/null || echo not found').toString().trim() || 'not found'; } catch { info.software.openclaw = 'not found'; }
+    try { info.software.npm = execSync('npm --version 2>/dev/null || echo not installed').toString().trim(); } catch { info.software.npm = 'not installed'; }
+    res.json({ ok: true, ...info });
+  });
+
+  // OpenClaw version info
+  router.get('/system/version', auth, (_req, res) => {
+    try {
+      const ocConfig = openclawConfig.read();
+      const currentVersion = ocConfig?.meta?.lastTouchedVersion || 'unknown';
+      let updateInfo: any = {};
+      const updateCheckPath = path.join(OPENCLAW_DIR, 'update-check.json');
+      try {
+        if (fs.existsSync(updateCheckPath)) {
+          updateInfo = JSON.parse(fs.readFileSync(updateCheckPath, 'utf-8'));
+        }
+      } catch {}
+      res.json({
+        ok: true,
+        currentVersion,
+        latestVersion: updateInfo.lastNotifiedVersion || '',
+        lastCheckedAt: updateInfo.lastCheckedAt || '',
+        updateAvailable: updateInfo.lastNotifiedVersion && updateInfo.lastNotifiedVersion !== currentVersion,
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
+  // Backup config
+  router.post('/system/backup', auth, (_req, res) => {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupDir = path.join(OPENCLAW_DIR, 'backups');
+      fs.mkdirSync(backupDir, { recursive: true });
+      const configSrc = path.join(OPENCLAW_DIR, 'openclaw.json');
+      if (fs.existsSync(configSrc)) {
+        fs.copyFileSync(configSrc, path.join(backupDir, `openclaw-${timestamp}.json`));
+      }
+      // Also backup cron jobs
+      const cronSrc = path.join(OPENCLAW_DIR, 'cron', 'jobs.json');
+      if (fs.existsSync(cronSrc)) {
+        fs.copyFileSync(cronSrc, path.join(backupDir, `cron-jobs-${timestamp}.json`));
+      }
+      res.json({ ok: true, backupId: timestamp });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
+  // List backups
+  router.get('/system/backups', auth, (_req, res) => {
+    try {
+      const backupDir = path.join(OPENCLAW_DIR, 'backups');
+      if (!fs.existsSync(backupDir)) return res.json({ ok: true, backups: [] });
+      const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.json')).sort().reverse();
+      const backups = files.map(f => ({
+        name: f,
+        path: path.join(backupDir, f),
+        size: fs.statSync(path.join(backupDir, f)).size,
+        time: fs.statSync(path.join(backupDir, f)).mtime.toISOString(),
+      }));
+      res.json({ ok: true, backups });
+    } catch (err) {
+      res.json({ ok: true, backups: [] });
+    }
+  });
+
+  // Restore backup
+  router.post('/system/restore', auth, (req, res) => {
+    try {
+      const { backupName } = req.body;
+      const backupDir = path.join(OPENCLAW_DIR, 'backups');
+      const backupPath = path.join(backupDir, backupName);
+      if (!fs.existsSync(backupPath)) return res.status(404).json({ ok: false, error: 'Backup not found' });
+      // Auto-backup current before restore
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const configPath = path.join(OPENCLAW_DIR, 'openclaw.json');
+      if (fs.existsSync(configPath)) {
+        fs.copyFileSync(configPath, path.join(backupDir, `pre-restore-${timestamp}.json`));
+      }
+      if (backupName.startsWith('openclaw-')) {
+        fs.copyFileSync(backupPath, configPath);
+      } else if (backupName.startsWith('cron-jobs-')) {
+        const cronPath = path.join(OPENCLAW_DIR, 'cron', 'jobs.json');
+        fs.copyFileSync(backupPath, cronPath);
+      }
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
+  // Scan installed skills/extensions
+  router.get('/system/skills', auth, (_req, res) => {
+    try {
+      const skills: any[] = [];
+      const extDir = path.join(OPENCLAW_DIR, 'extensions');
+      const ocConfig = openclawConfig.read() || {};
+      const pluginEntries = ocConfig?.plugins?.entries || {};
+      const pluginInstalls = ocConfig?.plugins?.installs || {};
+      // Scan extensions directory
+      if (fs.existsSync(extDir)) {
+        for (const name of fs.readdirSync(extDir)) {
+          const extPath = path.join(extDir, name);
+          if (!fs.statSync(extPath).isDirectory()) continue;
+          let pkgInfo: any = {};
+          try { pkgInfo = JSON.parse(fs.readFileSync(path.join(extPath, 'package.json'), 'utf-8')); } catch {}
+          skills.push({
+            id: name,
+            name: pkgInfo.name || name,
+            description: pkgInfo.description || '',
+            version: pluginInstalls[name]?.version || pkgInfo.version || '',
+            enabled: pluginEntries[name]?.enabled !== false,
+            source: pluginInstalls[name] ? 'installed' : 'local',
+            installedAt: pluginInstalls[name]?.installedAt || '',
+          });
+        }
+      }
+      // Also check skills directory
+      const skillsDir = path.join(OPENCLAW_DIR, 'skills');
+      if (fs.existsSync(skillsDir)) {
+        for (const name of fs.readdirSync(skillsDir)) {
+          const skillPath = path.join(skillsDir, name);
+          if (!fs.statSync(skillPath).isDirectory()) continue;
+          if (skills.find(s => s.id === name)) continue;
+          let pkgInfo: any = {};
+          try { pkgInfo = JSON.parse(fs.readFileSync(path.join(skillPath, 'package.json'), 'utf-8')); } catch {}
+          skills.push({
+            id: name,
+            name: pkgInfo.name || name,
+            description: pkgInfo.description || '',
+            version: pkgInfo.version || '',
+            enabled: true,
+            source: 'skill',
+          });
+        }
+      }
+      res.json({ ok: true, skills });
+    } catch (err) {
+      res.json({ ok: true, skills: [] });
+    }
+  });
+
+  // Read cron jobs directly from file
+  router.get('/system/cron', auth, (_req, res) => {
+    try {
+      const cronPath = path.join(OPENCLAW_DIR, 'cron', 'jobs.json');
+      if (!fs.existsSync(cronPath)) return res.json({ ok: true, jobs: [] });
+      const data = JSON.parse(fs.readFileSync(cronPath, 'utf-8'));
+      res.json({ ok: true, jobs: data.jobs || [] });
+    } catch (err) {
+      res.json({ ok: true, jobs: [] });
+    }
+  });
+
+  // Read MD docs from openclaw dir (agent profile, etc)
+  router.get('/system/docs', auth, (_req, res) => {
+    try {
+      const docs: any[] = [];
+      // Check agents dir for profile docs
+      const agentsDir = path.join(OPENCLAW_DIR, 'agents');
+      if (fs.existsSync(agentsDir)) {
+        const scanDir = (dir: string, prefix: string) => {
+          for (const name of fs.readdirSync(dir)) {
+            const full = path.join(dir, name);
+            const stat = fs.statSync(full);
+            if (stat.isDirectory()) {
+              scanDir(full, prefix + name + '/');
+            } else if (name.endsWith('.md')) {
+              docs.push({
+                name: prefix + name,
+                path: full,
+                content: fs.readFileSync(full, 'utf-8'),
+                size: stat.size,
+              });
+            }
+          }
+        };
+        scanDir(agentsDir, 'agents/');
+      }
+      // Check root-level md files
+      for (const name of fs.readdirSync(OPENCLAW_DIR)) {
+        if (name.endsWith('.md')) {
+          const full = path.join(OPENCLAW_DIR, name);
+          docs.push({
+            name,
+            path: full,
+            content: fs.readFileSync(full, 'utf-8'),
+            size: fs.statSync(full).size,
+          });
+        }
+      }
+      res.json({ ok: true, docs });
+    } catch (err) {
+      res.json({ ok: true, docs: [] });
+    }
+  });
+
+  // Save MD doc
+  router.put('/system/docs', auth, (req, res) => {
+    try {
+      const { path: docPath, content } = req.body;
+      if (!docPath || !docPath.endsWith('.md')) return res.status(400).json({ ok: false, error: 'Invalid path' });
+      // Security: ensure path is within OPENCLAW_DIR
+      const resolved = path.resolve(docPath);
+      if (!resolved.startsWith(path.resolve(OPENCLAW_DIR))) {
+        return res.status(403).json({ ok: false, error: 'Path outside openclaw dir' });
+      }
+      fs.writeFileSync(resolved, content, 'utf-8');
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
   // === Event Log API ===
   if (eventLog) {
     router.get('/events', auth, (req: any, res: any) => {

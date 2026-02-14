@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import {
-  Sparkles, Search, ToggleLeft, ToggleRight, ExternalLink, Download,
-  Settings2, Trash2, RefreshCw, Package, Globe, ChevronRight,
+  Sparkles, Search, ToggleLeft, ToggleRight, Download,
+  RefreshCw, Package, Globe, Check, Loader2,
 } from 'lucide-react';
 
 interface SkillEntry {
@@ -10,10 +10,26 @@ interface SkillEntry {
   name: string;
   description?: string;
   enabled: boolean;
-  source: 'bundled' | 'installed' | 'clawhub';
+  source: string;
   version?: string;
-  author?: string;
+  installedAt?: string;
 }
+
+const CLAWHUB_CATALOG: { id: string; name: string; description: string; version: string; category: string }[] = [
+  { id: 'feishu', name: '飞书 / Lark', description: '飞书机器人通道插件，支持 WebSocket 连接', version: '1.1.0', category: '通道' },
+  { id: 'qqbot', name: 'QQ 官方机器人', description: 'QQ开放平台官方Bot API插件', version: '1.2.3', category: '通道' },
+  { id: 'dingtalk', name: '钉钉', description: '钉钉机器人通道插件', version: '0.2.0', category: '通道' },
+  { id: 'wecom', name: '企业微信', description: '企业微信应用消息通道插件', version: '2026.1.30', category: '通道' },
+  { id: 'msteams', name: 'Microsoft Teams', description: 'Bot Framework 企业通道插件', version: '0.3.0', category: '通道' },
+  { id: 'mattermost', name: 'Mattermost', description: 'Mattermost Bot API + WebSocket 插件', version: '0.2.0', category: '通道' },
+  { id: 'line', name: 'LINE', description: 'LINE Messaging API 通道插件', version: '0.1.0', category: '通道' },
+  { id: 'matrix', name: 'Matrix', description: 'Matrix 协议通道插件', version: '0.1.0', category: '通道' },
+  { id: 'nextcloud-talk', name: 'Nextcloud Talk', description: 'Nextcloud Talk 自托管聊天插件', version: '0.1.0', category: '通道' },
+  { id: 'nostr', name: 'Nostr', description: '去中心化 NIP-04 DM 插件', version: '0.1.0', category: '通道' },
+  { id: 'twitch', name: 'Twitch', description: 'Twitch Chat via IRC 插件', version: '0.1.0', category: '通道' },
+  { id: 'tlon', name: 'Tlon', description: 'Urbit-based messenger 插件', version: '0.1.0', category: '通道' },
+  { id: 'zalo', name: 'Zalo', description: 'Zalo Bot API 插件', version: '0.1.0', category: '通道' },
+];
 
 export default function Skills() {
   const [skills, setSkills] = useState<SkillEntry[]>([]);
@@ -22,48 +38,18 @@ export default function Skills() {
   const [filter, setFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [tab, setTab] = useState<'installed' | 'clawhub'>('installed');
   const [msg, setMsg] = useState('');
+  const [installing, setInstalling] = useState('');
 
-  useEffect(() => {
-    loadSkills();
-  }, []);
+  useEffect(() => { loadSkills(); }, []);
 
   const loadSkills = async () => {
     setLoading(true);
     try {
-      const r = await api.getOpenClawConfig();
-      if (r.ok && r.config) {
-        const skillEntries = r.config.skills?.entries || {};
-        const parsed: SkillEntry[] = Object.entries(skillEntries).map(([id, cfg]: [string, any]) => ({
-          id,
-          name: id.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-          description: cfg.description || '',
-          enabled: cfg.enabled !== false,
-          source: 'bundled' as const,
-          version: cfg.version,
-        }));
-        // Also scan skills directory
-        try {
-          const skillsDir = await api.workspaceFiles('../../.openclaw/skills');
-          if (skillsDir.ok && skillsDir.files) {
-            for (const f of skillsDir.files) {
-              if (f.isDirectory && !parsed.find(s => s.id === f.name)) {
-                parsed.push({
-                  id: f.name,
-                  name: f.name.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-                  enabled: true,
-                  source: 'installed',
-                });
-              }
-            }
-          }
-        } catch {}
-        setSkills(parsed);
-      }
+      const r = await api.getSkills();
+      if (r.ok) setSkills(r.skills || []);
     } catch (err) {
       console.error('Failed to load skills:', err);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const toggleSkill = async (id: string) => {
@@ -72,21 +58,27 @@ export default function Skills() {
     const newEnabled = !skill.enabled;
     setSkills(prev => prev.map(s => s.id === id ? { ...s, enabled: newEnabled } : s));
     try {
-      const r = await api.getOpenClawConfig();
-      if (r.ok) {
-        const config = r.config || {};
-        if (!config.skills) config.skills = {};
-        if (!config.skills.entries) config.skills.entries = {};
-        config.skills.entries[id] = { ...config.skills.entries[id], enabled: newEnabled };
-        await api.updateOpenClawConfig(config);
-        setMsg(`${skill.name} 已${newEnabled ? '启用' : '禁用'}`);
-        setTimeout(() => setMsg(''), 2000);
-      }
-    } catch (err) {
+      await api.updatePlugin(id, { enabled: newEnabled });
+      setMsg(`${skill.name} 已${newEnabled ? '启用' : '禁用'}`);
+      setTimeout(() => setMsg(''), 2000);
+    } catch {
       setSkills(prev => prev.map(s => s.id === id ? { ...s, enabled: !newEnabled } : s));
       setMsg('操作失败');
       setTimeout(() => setMsg(''), 2000);
     }
+  };
+
+  const installedIds = new Set(skills.map(s => s.id));
+  const hubFiltered = CLAWHUB_CATALOG.filter(s => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return s.id.includes(q) || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
+  });
+
+  const handleInstallHint = (id: string) => {
+    setInstalling(id);
+    setMsg(`请在终端运行: openclaw plugins install ${id} — 安装后刷新页面`);
+    setTimeout(() => setInstalling(''), 3000);
   };
 
   const filtered = skills.filter(s => {
@@ -121,7 +113,7 @@ export default function Skills() {
         </button>
         <button onClick={() => setTab('clawhub')}
           className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${tab === 'clawhub' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          <Globe size={13} className="inline mr-1.5" />ClawHub 商店
+          <Globe size={13} className="inline mr-1.5" />ClawHub 商店 ({CLAWHUB_CATALOG.length})
         </button>
       </div>
 
@@ -167,8 +159,10 @@ export default function Skills() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{skill.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">{skill.id}</span>
-                      {skill.source === 'bundled' && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">内置</span>}
+                      {skill.version && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">v{skill.version}</span>}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${skill.source === 'installed' ? 'bg-blue-50 dark:bg-blue-950 text-blue-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                        {skill.source === 'installed' ? '已安装' : skill.source === 'skill' ? '技能' : '本地'}
+                      </span>
                     </div>
                     {skill.description && <p className="text-[11px] text-gray-500 mt-0.5 truncate">{skill.description}</p>}
                   </div>
@@ -184,14 +178,36 @@ export default function Skills() {
       )}
 
       {tab === 'clawhub' && (
-        <div className="card p-8 text-center">
-          <Globe size={32} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-          <h3 className="font-semibold text-sm mb-1">ClawHub 技能商店</h3>
-          <p className="text-xs text-gray-500 mb-4">浏览社区贡献的技能，一键安装到你的 OpenClaw</p>
-          <a href="https://clawhub.ai/skills" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700">
-            <ExternalLink size={13} />访问 ClawHub
-          </a>
+        <div className="grid gap-2">
+          {hubFiltered.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-xs">没有匹配的技能</div>
+          ) : hubFiltered.map(skill => {
+            const isInstalled = installedIds.has(skill.id);
+            return (
+              <div key={skill.id} className="card px-4 py-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900 dark:to-cyan-900 flex items-center justify-center shrink-0">
+                  <Globe size={14} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{skill.name}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">v{skill.version}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950 text-cyan-600">{skill.category}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5 truncate">{skill.description}</p>
+                </div>
+                {isInstalled ? (
+                  <span className="flex items-center gap-1 text-[11px] text-emerald-600 shrink-0"><Check size={13} />已安装</span>
+                ) : (
+                  <button onClick={() => handleInstallHint(skill.id)} disabled={installing === skill.id}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 shrink-0">
+                    {installing === skill.id ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                    安装
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

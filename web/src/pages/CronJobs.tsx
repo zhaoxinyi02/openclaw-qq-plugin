@@ -36,9 +36,9 @@ export default function CronJobs() {
   const loadJobs = async () => {
     setLoading(true);
     try {
-      const r = await api.getOpenClawConfig();
-      if (r.ok && r.config?.cron?.jobs) {
-        setJobs(r.config.cron.jobs);
+      const r = await api.getCronJobs();
+      if (r.ok && r.jobs) {
+        setJobs(r.jobs);
       } else {
         setJobs([]);
       }

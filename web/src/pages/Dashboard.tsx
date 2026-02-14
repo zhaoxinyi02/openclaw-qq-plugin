@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { api } from '../lib/api';
 import {
-  Wifi, WifiOff, Users, MessageCircle, Cpu, Clock, RefreshCw,
-  Search, ChevronDown, ChevronRight, ArrowDown, Activity,
-  MemoryStick, Radio, Sparkles, TrendingUp,
+  Wifi, Users, Cpu, Clock, RefreshCw,
+  ChevronDown, ChevronRight, ArrowDown, Activity,
+  MemoryStick, Radio, TrendingUp,
 } from 'lucide-react';
 import type { LogEntry } from '../hooks/useWebSocket';
 
@@ -39,15 +39,24 @@ export default function Dashboard({ ws }: DashboardProps) {
   const oc = status?.openclaw || {};
   const adm = status?.admin || {};
 
-  // Message stats
-  const now = Date.now();
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayLogs = ws.logEntries.filter(e => e.time >= todayStart.getTime());
   const qqCount = todayLogs.filter(e => e.source === 'qq').length;
   const botCount = todayLogs.filter(e => e.source === 'openclaw').length;
 
-  // Active channels count
-  const activeChannels = [nc.connected, wc.loggedIn].filter(Boolean).length;
+  // Build connected channels dynamically
+  const connectedChannels: { name: string; details: { label: string; value: string }[] }[] = [];
+  if (nc.connected) {
+    connectedChannels.push({ name: 'QQ (NapCat)', details: [
+      { label: '昵称', value: nc.nickname || '-' }, { label: 'QQ号', value: nc.selfId || '-' },
+      { label: '群数', value: String(nc.groupCount || 0) }, { label: '好友数', value: String(nc.friendCount || 0) },
+    ]});
+  }
+  if (wc.loggedIn) {
+    connectedChannels.push({ name: '微信', details: [
+      { label: '用户', value: wc.name || '-' }, { label: '状态', value: '已登录' },
+    ]});
+  }
 
   return (
     <div className="space-y-4 h-full flex flex-col">
@@ -59,9 +68,9 @@ export default function Dashboard({ ws }: DashboardProps) {
 
       {/* Status cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 shrink-0">
-        <StatCard icon={Radio} label="活跃通道" value={`${activeChannels} 个`}
-          sub={activeChannels > 0 ? [nc.connected && 'QQ', wc.loggedIn && '微信'].filter(Boolean).join(', ') : '无通道连接'}
-          color={activeChannels > 0 ? 'text-emerald-600' : 'text-red-500'} />
+        <StatCard icon={Radio} label="活跃通道" value={`${connectedChannels.length} 个`}
+          sub={connectedChannels.length > 0 ? connectedChannels.map(c => c.name).join(', ') : '无通道连接'}
+          color={connectedChannels.length > 0 ? 'text-emerald-600' : 'text-red-500'} />
         <StatCard icon={Cpu} label="AI 模型" value={oc.currentModel ? shortenModel(oc.currentModel) : '未设置'}
           sub={oc.currentModel || ''} color={oc.currentModel ? 'text-violet-600' : 'text-amber-500'} />
         <StatCard icon={Clock} label="运行时间" value={formatUptime(adm.uptime || 0)}
@@ -70,31 +79,32 @@ export default function Dashboard({ ws }: DashboardProps) {
           color="text-cyan-600" />
         <StatCard icon={TrendingUp} label="今日消息" value={`${todayLogs.length}`}
           sub={`收 ${qqCount} / 发 ${botCount}`} color="text-amber-600" />
-        <StatCard icon={Users} label="QQ 群/好友" value={`${nc.groupCount || 0} / ${nc.friendCount || 0}`}
+        <StatCard icon={Users} label="QQ 群/好友" value={nc.connected ? `${nc.groupCount || 0} / ${nc.friendCount || 0}` : '-'}
           color="text-indigo-600" />
       </div>
 
-      {/* Channel status detail */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 shrink-0">
-        <ChannelCard
-          name="QQ (NapCat)"
-          connected={nc.connected}
-          details={nc.connected ? [
-            { label: '昵称', value: nc.nickname || '-' },
-            { label: 'QQ号', value: nc.selfId || '-' },
-            { label: '群数', value: String(nc.groupCount || 0) },
-            { label: '好友数', value: String(nc.friendCount || 0) },
-          ] : []}
-        />
-        <ChannelCard
-          name="微信"
-          connected={wc.loggedIn}
-          details={wc.loggedIn ? [
-            { label: '用户', value: wc.name || '-' },
-            { label: '状态', value: '已登录' },
-          ] : [{ label: '容器', value: wc.connected ? '已连接' : '未连接' }]}
-        />
-      </div>
+      {/* Connected channel cards — only show connected */}
+      {connectedChannels.length > 0 && (
+        <div className={`grid grid-cols-1 ${connectedChannels.length > 1 ? 'lg:grid-cols-2' : ''} gap-3 shrink-0`}>
+          {connectedChannels.map(ch => (
+            <div key={ch.name} className="card p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Wifi size={14} className="text-emerald-500" />
+                <span className="text-xs font-semibold">{ch.name}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-50 dark:bg-emerald-950 text-emerald-600">已连接</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                {ch.details.map(d => (
+                  <div key={d.label} className="flex items-center gap-1.5 text-[11px]">
+                    <span className="text-gray-400">{d.label}:</span>
+                    <span className="text-gray-700 dark:text-gray-300 truncate">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Recent activity */}
       <div className="card flex-1 flex flex-col min-h-0">
@@ -145,30 +155,6 @@ export default function Dashboard({ ws }: DashboardProps) {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-function ChannelCard({ name, connected, details }: { name: string; connected: boolean; details: { label: string; value: string }[] }) {
-  return (
-    <div className="card p-3">
-      <div className="flex items-center gap-2 mb-2">
-        {connected ? <Wifi size={14} className="text-emerald-500" /> : <WifiOff size={14} className="text-red-400" />}
-        <span className="text-xs font-semibold">{name}</span>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${connected ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600' : 'bg-red-50 dark:bg-red-950 text-red-500'}`}>
-          {connected ? '已连接' : '未连接'}
-        </span>
-      </div>
-      {details.length > 0 && (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-          {details.map(d => (
-            <div key={d.label} className="flex items-center gap-1.5 text-[11px]">
-              <span className="text-gray-400">{d.label}:</span>
-              <span className="text-gray-700 dark:text-gray-300 truncate">{d.value}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

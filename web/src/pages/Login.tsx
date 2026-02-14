@@ -22,7 +22,7 @@ export default function Login({ onLogin }: { onLogin: (pw: string) => Promise<bo
           <div className="mx-auto w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
             <Lock className="text-indigo-600 dark:text-indigo-400" size={22} />
           </div>
-          <h1 className="text-lg font-bold">OpenClaw QQ Manager</h1>
+          <h1 className="text-lg font-bold">ClawPanel</h1>
           <p className="text-xs text-gray-500">输入管理密码登录</p>
         </div>
         <input type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="管理密码" className="input" autoFocus />
