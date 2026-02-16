@@ -57,6 +57,29 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
       wechatInfo.name = wl.name || wechatClient.loginUser?.name || '';
     } catch { wechatInfo.loggedIn = false; }
 
+    // Build list of ALL enabled channels from openclaw.json (channels + plugins.entries)
+    const channelLabels: Record<string, string> = {
+      qq: 'QQ (NapCat)', wechat: '微信', whatsapp: 'WhatsApp', telegram: 'Telegram',
+      discord: 'Discord', irc: 'IRC', slack: 'Slack', signal: 'Signal',
+      googlechat: 'Google Chat', bluebubbles: 'BlueBubbles', webchat: 'WebChat',
+      feishu: '飞书 / Lark', qqbot: 'QQ 官方机器人', dingtalk: '钉钉',
+      wecom: '企业微信', msteams: 'Microsoft Teams', mattermost: 'Mattermost',
+      line: 'LINE', matrix: 'Matrix', twitch: 'Twitch',
+    };
+    const enabledChannels: { id: string; label: string; type: 'builtin' | 'plugin' }[] = [];
+    const channels = ocConfig?.channels || {};
+    const plugins = ocConfig?.plugins?.entries || {};
+    for (const [id, conf] of Object.entries(channels)) {
+      if ((conf as any)?.enabled) {
+        enabledChannels.push({ id, label: channelLabels[id] || id, type: 'builtin' });
+      }
+    }
+    for (const [id, conf] of Object.entries(plugins)) {
+      if ((conf as any)?.enabled && !enabledChannels.find(c => c.id === id)) {
+        enabledChannels.push({ id, label: channelLabels[id] || id, type: 'plugin' });
+      }
+    }
+
     res.json({
       ok: true,
       napcat: {
@@ -71,6 +94,7 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
         qqPluginEnabled: !!ocConfig?.plugins?.entries?.qq?.enabled,
         qqChannelEnabled: !!ocConfig?.channels?.qq?.enabled,
         currentModel: ocConfig?.agents?.defaults?.model?.primary || '',
+        enabledChannels,
       },
       admin: {
         uptime: process.uptime(),
@@ -184,7 +208,32 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
       // 5. Signal host to restart gateway
       if (eventLog) eventLog.addSystemEvent('正在重启 OpenClaw 网关...');
       const restartSignal = path.join(OPENCLAW_DIR_FOR_SIGNAL, 'restart-gateway-signal.json');
+      const restartResult = path.join(OPENCLAW_DIR_FOR_SIGNAL, 'restart-gateway-result.json');
+      // Remove old result before requesting restart
+      try { if (fs.existsSync(restartResult)) fs.unlinkSync(restartResult); } catch {}
       fs.writeFileSync(restartSignal, JSON.stringify({ requestedAt: new Date().toISOString(), reason: `${label} ${enabled ? 'enabled' : 'disabled'}` }));
+
+      // Poll for restart result (up to 30s) and log success/failure
+      if (eventLog) {
+        (async () => {
+          for (let i = 0; i < 15; i++) {
+            await new Promise(r => setTimeout(r, 2000));
+            try {
+              if (fs.existsSync(restartResult)) {
+                const result = JSON.parse(fs.readFileSync(restartResult, 'utf-8'));
+                if (result.status === 'success') {
+                  eventLog.addSystemEvent('OpenClaw 网关重启成功');
+                } else if (result.status === 'failed') {
+                  eventLog.addSystemEvent(`OpenClaw 网关重启失败: ${result.error || '未知错误'}`);
+                }
+                return;
+              }
+            } catch {}
+          }
+          // Timeout — gateway may have restarted without writing result
+          eventLog.addSystemEvent('OpenClaw 网关重启状态未知（超时）');
+        })();
+      }
 
       // 6. If QQ disabled, restart container QQ process after a delay (forces NapCat to show login screen)
       if (channelId === 'qq' && !enabled) {

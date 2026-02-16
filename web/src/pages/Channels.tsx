@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api';
-import { Radio, Wifi, WifiOff, QrCode, Key, Zap, UserCheck, Check, X, Power, Loader2, RefreshCw, LogOut } from 'lucide-react';
+import { Radio, Wifi, WifiOff, QrCode, Key, Zap, UserCheck, Check, X, Power, Loader2, RefreshCw, LogOut, Sparkles } from 'lucide-react';
 
 type ChannelDef = {
   id: string; label: string; description: string; type: 'builtin' | 'plugin';
@@ -378,126 +378,172 @@ export default function Channels() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Channel selector */}
-        <div className="card p-3 space-y-1 max-h-[70vh] overflow-y-auto">
-          <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1">内置通道</h3>
-          {sortedBuiltin.map(ch => {
-            const st = getChannelStatus(ch, ocConfig);
-            return (
-              <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                  selectedChannel === ch.id
-                    ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}>
-                <Radio size={14} />
-                <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{ch.label}</div></div>
-                <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot(st)}`} title={statusLabel(st)} />
-              </button>
-            );
-          })}
-          <h3 className="text-xs font-semibold text-gray-500 mt-3 mb-2 px-1">插件通道</h3>
-          {sortedPlugin.map(ch => {
-            const st = getChannelStatus(ch, ocConfig);
-            return (
-              <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                  selectedChannel === ch.id
-                    ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}>
-                <Radio size={14} />
-                <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{ch.label}</div></div>
-                <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot(st)}`} title={statusLabel(st)} />
-              </button>
-            );
-          })}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 flex flex-col max-h-[75vh] overflow-hidden">
+          <div className="p-3 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/50">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider px-1">通道列表</h3>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-4">
+            <div>
+              <h3 className="text-[10px] font-semibold text-gray-400 mb-2 px-2 uppercase tracking-wide">内置通道</h3>
+              <div className="space-y-1">
+                {sortedBuiltin.map(ch => {
+                  const st = getChannelStatus(ch, ocConfig);
+                  return (
+                    <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-all duration-200 group ${
+                        selectedChannel === ch.id
+                          ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 shadow-sm ring-1 ring-violet-100 dark:ring-violet-800'
+                          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}>
+                      <div className={`p-1.5 rounded-md transition-colors ${selectedChannel === ch.id ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 group-hover:bg-white group-hover:shadow-sm'}`}>
+                        <Radio size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-semibold truncate">{ch.label}</div>
+                        <div className="text-[10px] text-gray-400 truncate opacity-80">{ch.description}</div>
+                      </div>
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot(st)} ring-2 ring-white dark:ring-gray-800`} title={statusLabel(st)} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {sortedPlugin.length > 0 && (
+              <div>
+                <h3 className="text-[10px] font-semibold text-gray-400 mb-2 px-2 uppercase tracking-wide">插件通道</h3>
+                <div className="space-y-1">
+                  {sortedPlugin.map(ch => {
+                    const st = getChannelStatus(ch, ocConfig);
+                    return (
+                      <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm transition-all duration-200 group ${
+                          selectedChannel === ch.id
+                            ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 shadow-sm ring-1 ring-violet-100 dark:ring-violet-800'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                        }`}>
+                        <div className={`p-1.5 rounded-md transition-colors ${selectedChannel === ch.id ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 group-hover:bg-white group-hover:shadow-sm'}`}>
+                          <Radio size={14} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold truncate">{ch.label}</div>
+                          <div className="text-[10px] text-gray-400 truncate opacity-80">{ch.description}</div>
+                        </div>
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot(st)} ring-2 ring-white dark:ring-gray-800`} title={statusLabel(st)} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Channel config */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="lg:col-span-3 space-y-6">
           {currentDef && (
-            <div className="card p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-6 space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-4">
+                  <div className={`p-2.5 rounded-xl ${isChannelEnabled(currentDef.id) ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}>
+                    <Power size={20} />
+                  </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm">{currentDef.label} 配置</h3>
-                      <span className={`w-2 h-2 rounded-full ${statusDot(getChannelStatus(currentDef, ocConfig))}`} />
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        getChannelStatus(currentDef, ocConfig) === 'enabled' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600' :
-                        getChannelStatus(currentDef, ocConfig) === 'configured' ? 'bg-red-50 dark:bg-red-950 text-red-500' :
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-bold text-base text-gray-900 dark:text-white">{currentDef.label} 配置</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        getChannelStatus(currentDef, ocConfig) === 'enabled' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400' :
+                        getChannelStatus(currentDef, ocConfig) === 'configured' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400' :
                         'bg-gray-100 dark:bg-gray-800 text-gray-500'
                       }`}>{statusLabel(getChannelStatus(currentDef, ocConfig))}</span>
                     </div>
-                    <p className="text-[11px] text-gray-500 mt-0.5">{currentDef.description}</p>
+                    <p className="text-xs text-gray-500 mt-1">{currentDef.description}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   {/* Enable/Disable toggle switch */}
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleToggleEnabled(currentDef.id)}
-                      className={`relative w-10 h-5 rounded-full transition-colors ${isChannelEnabled(currentDef.id) ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${isChannelEnabled(currentDef.id) ? 'translate-x-5' : ''}`} />
-                    </button>
-                    <span className={`text-[11px] font-medium ${isChannelEnabled(currentDef.id) ? 'text-emerald-600' : 'text-gray-500'}`}>
-                      {isChannelEnabled(currentDef.id) ? '已启用' : '未启用'}
+                  <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 px-3 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800">
+                    <span className={`text-[11px] font-medium ${isChannelEnabled(currentDef.id) ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'}`}>
+                      {isChannelEnabled(currentDef.id) ? '启用中' : '已停用'}
                     </span>
+                    <button onClick={() => handleToggleEnabled(currentDef.id)}
+                      className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-violet-500 ${isChannelEnabled(currentDef.id) ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isChannelEnabled(currentDef.id) ? 'translate-x-4' : ''}`} />
+                    </button>
                   </div>
+                  
                   {currentDef.loginMethods && currentDef.loginMethods.length > 0 && (
-                    <>
+                    <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-700 pl-3 ml-1">
                       {currentDef.loginMethods.includes('qrcode') && (
-                        <button onClick={handleQRLogin} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900">
-                          <QrCode size={12} />扫码登录
+                        <button onClick={handleQRLogin} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
+                          <QrCode size={14} />扫码
                         </button>
                       )}
                       {currentDef.loginMethods.includes('quick') && (
-                        <button onClick={handleQuickLoginOpen} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900">
-                          <Zap size={12} />快速登录
+                        <button onClick={handleQuickLoginOpen} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors">
+                          <Zap size={14} />快速
                         </button>
                       )}
                       {currentDef.loginMethods.includes('password') && (
-                        <button onClick={handlePasswordLoginOpen} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900">
-                          <Key size={12} />账密登录
+                        <button onClick={handlePasswordLoginOpen} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors">
+                          <Key size={14} />账密
                         </button>
                       )}
                       {currentDef.id === 'qq' && (
-                        <button onClick={handleQQLogout} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900">
-                          <LogOut size={12} />退出登录
+                        <button onClick={handleQQLogout} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
+                          <LogOut size={14} />退出
                         </button>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
 
-              <form id="channel-config-form" className="space-y-3" onSubmit={e => { e.preventDefault(); handleSave(); }}>
+              <form id="channel-config-form" className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5" onSubmit={e => { e.preventDefault(); handleSave(); }}>
                 {currentDef.configFields.map(field => {
                   const currentVal = getFieldValue(currentDef.id, field.key);
+                  const isFullWidth = field.type === 'toggle' || field.key === 'webhookUrl' || field.key === 'token' || field.key === 'accessToken' || field.key === 'appSecret';
+                  
                   return (
-                    <div key={field.key}>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {field.label}
-                        {field.help && <span className="text-gray-400 font-normal ml-1">— {field.help}</span>}
-                        {currentVal !== undefined && currentVal !== null && currentVal !== '' && field.type !== 'toggle' && (
-                          <span className="text-emerald-500 font-normal ml-1.5 text-[10px]">● 已配置</span>
-                        )}
-                      </label>
+                    <div key={field.key} className={isFullWidth ? "md:col-span-2" : ""}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          {field.label}
+                        </label>
+                        {field.help && <span className="text-[10px] text-gray-400">{field.help}</span>}
+                      </div>
+                      
                       {field.type === 'toggle' ? (
-                        <button type="button"
-                          onClick={() => handleToggleField(currentDef.id, field.key)}
-                          className={`relative w-10 h-5 rounded-full transition-colors ${currentVal ? 'bg-violet-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${currentVal ? 'translate-x-5' : ''}`} />
-                        </button>
+                        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30">
+                          <button type="button"
+                            onClick={() => handleToggleField(currentDef.id, field.key)}
+                            className={`relative w-9 h-5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-violet-500 ${currentVal ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${currentVal ? 'translate-x-4' : ''}`} />
+                          </button>
+                          <span className={`text-xs ${currentVal ? 'text-violet-600 dark:text-violet-400 font-medium' : 'text-gray-500'}`}>
+                            {currentVal ? '已开启' : '已关闭'}
+                          </span>
+                        </div>
                       ) : (
-                        <input
-                          name={field.key}
-                          type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
-                          defaultValue={currentVal ?? ''}
-                          placeholder={field.placeholder || (currentVal === undefined ? '未配置' : '')}
-                          className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent"
-                        />
+                        <div className="relative">
+                          <input
+                            name={field.key}
+                            type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
+                            defaultValue={currentVal ?? ''}
+                            placeholder={field.placeholder || '未配置'}
+                            className={`w-full px-3.5 py-2 text-sm border rounded-lg bg-white dark:bg-gray-900 transition-all focus:ring-2 focus:ring-violet-100 dark:focus:ring-violet-900/30 focus:border-violet-500 outline-none
+                              ${(currentVal !== undefined && currentVal !== null && currentVal !== '') 
+                                ? 'border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100' 
+                                : 'border-gray-200 dark:border-gray-800 text-gray-400'}`}
+                          />
+                          {(currentVal !== undefined && currentVal !== null && currentVal !== '') && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500">
+                              <Check size={14} strokeWidth={3} />
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   );
@@ -505,12 +551,16 @@ export default function Channels() {
               </form>
 
               {currentDef.configFields.length === 0 && (
-                <p className="text-xs text-gray-400 py-4 text-center">此通道无需额外配置</p>
+                <div className="py-12 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                  <Sparkles size={32} className="mb-2 opacity-20" />
+                  <p className="text-sm">此通道无需额外配置，启用即可使用</p>
+                </div>
               )}
 
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex items-center justify-end pt-4 border-t border-gray-50 dark:border-gray-800">
                 <button onClick={handleSave} disabled={saving}
-                  className="px-4 py-2 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 shadow-sm shadow-violet-200 dark:shadow-none transition-all hover:shadow-md hover:shadow-violet-200 dark:hover:shadow-none">
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                   {saving ? '保存中...' : '保存配置'}
                 </button>
               </div>
@@ -519,22 +569,34 @@ export default function Channels() {
 
           {/* QQ Requests — only when QQ selected */}
           {selectedChannel === 'qq' && requests.length > 0 && (
-            <div className="card p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <UserCheck size={14} className="text-violet-500" />
-                <h3 className="font-semibold text-sm">待审核请求</h3>
-                <span className="text-[10px] text-gray-400">{requests.length} 条</span>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5 space-y-4">
+              <div className="flex items-center gap-3 pb-2 border-b border-gray-50 dark:border-gray-800">
+                <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600">
+                  <UserCheck size={18} />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900 dark:text-white">待审核请求</h3>
+                <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{requests.length}</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {requests.map((r: any) => (
-                  <div key={r.flag} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 text-xs">
+                  <div key={r.flag} className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900/30 border border-gray-100 dark:border-gray-800 text-sm">
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium">{r.type === 'group' ? '加群' : '加好友'}</span>
-                      <span className="text-gray-400 ml-2">{r.userId || r.groupId || ''}</span>
-                      {r.comment && <span className="text-gray-500 ml-2">"{r.comment}"</span>}
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${r.type === 'group' ? 'bg-indigo-100 text-indigo-700' : 'bg-pink-100 text-pink-700'}`}>
+                          {r.type === 'group' ? '加群' : '好友'}
+                        </span>
+                        <span className="font-mono text-gray-900 dark:text-gray-100 font-medium">{r.userId || r.groupId || ''}</span>
+                      </div>
+                      {r.comment && <div className="text-gray-500 text-xs truncate">附言: "{r.comment}"</div>}
                     </div>
-                    <button onClick={() => handleApprove(r.flag)} className="p-1.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-600 hover:bg-emerald-100"><Check size={12} /></button>
-                    <button onClick={() => handleReject(r.flag)} className="p-1.5 rounded bg-red-50 dark:bg-red-950 text-red-500 hover:bg-red-100"><X size={12} /></button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleApprove(r.flag)} className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors" title="同意">
+                        <Check size={16} />
+                      </button>
+                      <button onClick={() => handleReject(r.flag)} className="p-2 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" title="拒绝">
+                        <X size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -545,21 +607,22 @@ export default function Channels() {
 
       {/* QQ Login Modal */}
       {loginModal && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setLoginModal(null)}>
-          <div className="bg-white dark:bg-gray-900 rounded-xl max-w-md w-full overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">
-                {loginModal === 'qrcode' && 'QQ 扫码登录'}
-                {loginModal === 'quick' && 'QQ 快速登录'}
-                {loginModal === 'password' && 'QQ 账密登录'}
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setLoginModal(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden transform transition-all border border-gray-100 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                {loginModal === 'qrcode' && <><QrCode size={18} className="text-blue-500" /> QQ 扫码登录</>}
+                {loginModal === 'quick' && <><Zap size={18} className="text-emerald-500" /> QQ 快速登录</>}
+                {loginModal === 'password' && <><Key size={18} className="text-amber-500" /> QQ 账密登录</>}
               </h3>
-              <button onClick={() => setLoginModal(null)} className="text-gray-400 hover:text-gray-600">
-                <X size={16} />
+              <button onClick={() => setLoginModal(null)} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <X size={18} />
               </button>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-6 space-y-4">
               {loginMsg && (
-                <div className={`px-3 py-2 rounded-lg text-xs ${loginMsg.includes('成功') ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600' : 'bg-red-50 dark:bg-red-950 text-red-600'}`}>
+                <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 ${loginMsg.includes('成功') ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600' : 'bg-red-50 dark:bg-red-900/30 text-red-600'}`}>
+                   {loginMsg.includes('成功') ? <Check size={16} /> : <X size={16} />}
                   {loginMsg}
                 </div>
               )}

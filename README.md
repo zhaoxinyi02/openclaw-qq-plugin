@@ -10,10 +10,10 @@
 
 [![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-red?style=flat-square)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen?style=flat-square&logo=docker&logoColor=white)](docker-compose.yml)
-[![Version](https://img.shields.io/badge/version-4.2.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
+[![Version](https://img.shields.io/badge/version-4.2.1-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/zhaoxinyi02/ClawPanel?style=flat-square&logo=github)](https://github.com/zhaoxinyi02/ClawPanel/stargazers)
 
-[快速开始](#-快速开始) · [功能特性](#-主要功能) · [效果预览](#-效果预览) · [API 文档](docs/API.md) · [部署指南](docs/DEPLOYMENT.md)
+[快速开始](#-快速开始) · [功能特性](#-主要功能) · [效果预览](#-效果预览) · [API 文档](docs/API.md) · [部署指南](docs/DEPLOYMENT.md) · [English](README_EN.md)
 
 </div>
 
@@ -27,7 +27,7 @@
 > This project is for **learning and research purposes only**. **Commercial use is strictly prohibited.** Use at your own risk. See [full disclaimer](DISCLAIMER.md).
 
 > [!NOTE]
-> **v4.1 重大升级**：项目从 `openclaw-im-manager` 升级为 **ClawPanel**，从单纯的 IM 管理工具进化为完整的 OpenClaw 智能管理面板。新增 20+ 通道支持、多模型提供商配置、版本管理、环境检测、文档管理等功能。
+> **v4.2.1 UI 美化 & 通道修复**：全新紫罗兰主题设计、专业图标替换、仪表盘/侧边栏显示所有已连接通道、网关重启成功日志、favicon 更新。
 > 旧版本请查看 [v3.0.0 Tag](https://github.com/zhaoxinyi02/ClawPanel/releases/tag/v3.0.0)。
 
 ## ✨ 主要功能
@@ -275,6 +275,17 @@ git pull && docker compose up -d --build
 </details>
 
 ## 📋 更新日志
+
+### v4.2.1 — UI 美化 & 通道显示修复 (2026-02-17)
+- 🎨 **全新紫罗兰主题**：统一的 Violet 色调设计，现代化卡片布局，深色/浅色模式全面适配
+- 🎨 **专业图标**：全面替换 emoji 为 Lucide 专业图标库
+- 🔧 **仪表盘通道修复**：显示所有已启用通道（QQ/飞书/QQBot/钉钉等），不再仅显示 QQ 和微信
+- 🔧 **侧边栏通道修复**：运行状态区显示所有已启用通道，QQ 号码完整显示不再截断
+- 🔧 **网关重启日志**：通道启用/禁用后自动轮询网关重启结果，记录成功/失败日志
+- 🔧 **移除 QQ 群/好友卡片**：仪表盘不再显示冗余的 QQ 群/好友统计卡片
+- 🆕 **Favicon 更新**：浏览器标签页图标更换为 ClawPanel Logo
+- 🆕 **Apple Touch Icon**：添加 iOS 主屏幕图标支持
+- 📝 **英文 README**：新增 [README_EN.md](README_EN.md)，方便国际用户阅读
 
 ### v4.2.0 — 通道管理增强 & Bug 修复 (2026-02-16)
 - 🔧 **QQ 登录修复**：扫码登录、快速登录、账密登录按钮全部可用，二维码正常显示

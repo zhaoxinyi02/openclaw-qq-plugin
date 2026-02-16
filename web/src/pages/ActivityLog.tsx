@@ -67,104 +67,132 @@ export default function ActivityLog({ ws }: Props) {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-4 shrink-0">
+    <div className="h-full flex flex-col space-y-4">
+      <div className="flex items-center justify-between shrink-0">
         <div>
-          <h2 className="text-lg font-bold">活动日志</h2>
-          <p className="text-xs text-gray-500 mt-0.5">实时查看所有通道的消息收发记录</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">活动日志</h2>
+          <p className="text-sm text-gray-500 mt-1">实时查看所有通道的消息收发记录</p>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={handleExport} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
-            <Download size={13} />导出
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors shadow-sm">
+            <Download size={14} />导出日志
           </button>
         </div>
       </div>
 
-      <div className="card flex-1 flex flex-col min-h-0">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] text-gray-400 tabular-nums">{filteredLog.length} 条记录</span>
+        <div className="flex flex-col gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-800/50 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <span className="font-semibold text-gray-900 dark:text-white tabular-nums">{filteredLog.length}</span> 条记录
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setAutoScroll(!autoScroll)}
+                className={`p-2 rounded-lg transition-all ${autoScroll ? 'bg-violet-50 text-violet-600 shadow-sm ring-1 ring-violet-100' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                title={autoScroll ? '暂停自动滚动' : '开启自动滚动'}>
+                <ArrowDown size={14} />
+              </button>
+              <button onClick={ws.refreshLog} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 transition-colors" title="刷新">
+                <RefreshCw size={14} />
+              </button>
+              <button onClick={ws.clearEvents} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors" title="清空">
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setAutoScroll(!autoScroll)}
-              className={`p-1.5 rounded transition-colors ${autoScroll ? 'bg-violet-100 dark:bg-violet-900 text-violet-600' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-              title={autoScroll ? '自动滚动: 开' : '自动滚动: 关'}>
-              <ArrowDown size={13} />
-            </button>
-            <button onClick={ws.refreshLog} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400" title="刷新">
-              <RefreshCw size={13} />
-            </button>
-            <button onClick={ws.clearEvents} className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400" title="清空">
-              <Trash2 size={13} />
-            </button>
-          </div>
-        </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 px-4 pb-2 shrink-0 flex-wrap">
-          <div className="relative flex-1 max-w-xs min-w-[180px]">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索日志内容..."
-              className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent" />
-          </div>
-          {/* Source filter */}
-          <div className="flex gap-1">
-            {[
-              { key: '', label: '全部', count: ws.logEntries.length },
-              { key: 'qq', label: 'QQ', count: sourceCounts['qq'] || 0 },
-              { key: 'openclaw', label: 'Bot回复', count: sourceCounts['openclaw'] || 0 },
-              { key: 'wechat', label: '微信', count: sourceCounts['wechat'] || 0 },
-              { key: 'system', label: '系统', count: sourceCounts['system'] || 0 },
-            ].map(f => (
-              <button key={f.key} onClick={() => setSourceFilter(f.key)}
-                className={`px-2 py-1 text-[10px] rounded-md transition-colors whitespace-nowrap ${sourceFilter === f.key ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 font-medium' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                {f.label}{f.count > 0 ? ` (${f.count})` : ''}
-              </button>
-            ))}
-          </div>
-          {/* Type filter */}
-          <div className="flex gap-1 ml-1">
-            <Filter size={12} className="text-gray-400 mt-0.5" />
-            {[
-              { key: '', label: '全部类型' },
-              { key: 'text', label: '文本' },
-              { key: 'media', label: '媒体' },
-              { key: 'sticker', label: '表情' },
-            ].map(f => (
-              <button key={f.key} onClick={() => setTypeFilter(f.key)}
-                className={`px-2 py-1 text-[10px] rounded-md transition-colors whitespace-nowrap ${typeFilter === f.key ? 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 font-medium' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-                {f.label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                placeholder="搜索日志内容..."
+                className="w-full pl-9 pr-4 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all" 
+              />
+            </div>
+            
+            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
+            
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+              {[
+                { key: '', label: '全部', count: ws.logEntries.length },
+                { key: 'qq', label: 'QQ', count: sourceCounts['qq'] || 0 },
+                { key: 'openclaw', label: 'Bot回复', count: sourceCounts['openclaw'] || 0 },
+                { key: 'wechat', label: '微信', count: sourceCounts['wechat'] || 0 },
+                { key: 'system', label: '系统', count: sourceCounts['system'] || 0 },
+              ].map(f => (
+                <button key={f.key} onClick={() => setSourceFilter(f.key)}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    sourceFilter === f.key 
+                    ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 font-semibold shadow-sm' 
+                    : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}>
+                  {f.label}
+                  {f.count > 0 && <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${sourceFilter === f.key ? 'bg-white/50 text-violet-800' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>{f.count}</span>}
+                </button>
+              ))}
+            </div>
+
+            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block"></div>
+
+            <div className="flex items-center gap-1.5">
+              <Filter size={14} className="text-gray-400" />
+              {[
+                { key: '', label: '全部类型' },
+                { key: 'text', label: '文本' },
+                { key: 'media', label: '媒体' },
+                { key: 'sticker', label: '表情' },
+              ].map(f => (
+                <button key={f.key} onClick={() => setTypeFilter(f.key)}
+                  className={`px-2.5 py-1.5 text-xs rounded-lg transition-all whitespace-nowrap ${
+                    typeFilter === f.key 
+                    ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-semibold shadow-sm' 
+                    : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Log entries */}
-        <div ref={logRef} className="flex-1 overflow-y-auto min-h-0 px-2 pb-2">
-          {filteredLog.length === 0 && <p className="text-gray-400 py-8 text-center text-xs">暂无日志</p>}
+        <div ref={logRef} className="flex-1 overflow-y-auto min-h-0 p-2 space-y-0.5">
+          {filteredLog.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3">
+              <div className="p-4 rounded-full bg-gray-50 dark:bg-gray-800/50">
+                <Search size={24} className="opacity-20" />
+              </div>
+              <p className="text-sm">暂无匹配的日志记录</p>
+            </div>
+          )}
           {filteredLog.slice(0, 500).map((entry) => (
             <div key={entry.id} className="group">
               <div
-                className={`flex items-start gap-2 py-1.5 px-2 rounded cursor-pointer transition-colors text-xs
-                  ${expandedId === entry.id ? 'bg-gray-50 dark:bg-gray-800/70' : 'hover:bg-gray-50 dark:hover:bg-gray-800/30'}`}
+                className={`flex items-start gap-3 py-2 px-3 rounded-lg cursor-pointer transition-all duration-200 text-xs border border-transparent
+                  ${expandedId === entry.id ? 'bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'}`}
                 onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
               >
-                {entry.detail ? (
-                  expandedId === entry.id
-                    ? <ChevronDown size={12} className="shrink-0 mt-0.5 text-gray-400" />
-                    : <ChevronRight size={12} className="shrink-0 mt-0.5 text-gray-400" />
-                ) : <span className="w-3 shrink-0" />}
-                <span className="text-gray-400 shrink-0 tabular-nums text-[11px]">{formatLogTime(entry.time)}</span>
-                <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${sourceColor(entry.source)}`}>
+                <span className="text-gray-400 shrink-0 font-mono text-[10px] pt-0.5 opacity-70 group-hover:opacity-100 transition-opacity">{formatLogTime(entry.time)}</span>
+                
+                <span className={`shrink-0 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase ${sourceColor(entry.source)}`}>
                   {sourceLabel(entry.source)}
                 </span>
-                <span className={`break-all leading-relaxed ${entry.source === 'openclaw' ? 'text-purple-700 dark:text-purple-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {entry.summary}
-                </span>
+                
+                <div className="flex-1 min-w-0">
+                  <p className={`break-all font-medium leading-relaxed ${entry.source === 'openclaw' ? 'text-violet-700 dark:text-violet-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                    {entry.summary}
+                  </p>
+                </div>
+
+                {entry.detail ? (
+                  <ChevronDown size={14} className={`shrink-0 text-gray-300 transition-transform duration-200 ${expandedId === entry.id ? 'rotate-180 text-gray-500' : ''}`} />
+                ) : <span className="w-3.5" />}
               </div>
               {expandedId === entry.id && entry.detail && (
-                <div className="ml-8 mr-2 mb-1 px-3 py-2 rounded bg-gray-100 dark:bg-gray-800 text-[11px] text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-all max-h-40 overflow-y-auto">
+                <div className="ml-12 mr-3 mb-2 mt-1 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 text-[11px] font-mono text-gray-600 dark:text-gray-400 whitespace-pre-wrap break-all shadow-inner max-h-60 overflow-y-auto">
                   {entry.detail}
                 </div>
               )}

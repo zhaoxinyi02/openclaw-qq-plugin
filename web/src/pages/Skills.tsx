@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import {
   Sparkles, Search, ToggleLeft, ToggleRight, Download,
-  RefreshCw, Package, Globe, Check, Loader2, ExternalLink,
+  RefreshCw, Package, Globe, Check, Loader2, ExternalLink, X, Key, FolderOpen,
 } from 'lucide-react';
 
 interface SkillEntry {
@@ -124,50 +124,51 @@ export default function Skills() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold">技能中心</h2>
-          <p className="text-xs text-gray-500 mt-0.5">管理 OpenClaw 的技能插件</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">技能中心</h2>
+          <p className="text-sm text-gray-500 mt-1">管理 OpenClaw 的技能插件与扩展</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={loadSkills} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
-            <RefreshCw size={13} />刷新
+          <button onClick={loadSkills} className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors shadow-sm">
+            <RefreshCw size={14} />刷新列表
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex gap-6 border-b border-gray-200 dark:border-gray-800">
         <button onClick={() => setTab('installed')}
-          className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${tab === 'installed' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          <Package size={13} className="inline mr-1.5" />已安装 ({skills.length})
+          className={`pb-3 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${tab === 'installed' ? 'border-violet-600 text-violet-700 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+          <Package size={16} />已安装 <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-1.5 py-0.5 rounded-full">{skills.length}</span>
         </button>
         <button onClick={() => setTab('clawhub')}
-          className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${tab === 'clawhub' ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-          <Globe size={13} className="inline mr-1.5" />ClawHub 商店 ({CLAWHUB_CATALOG.length})
+          className={`pb-3 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${tab === 'clawhub' ? 'border-violet-600 text-violet-700 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+          <Globe size={16} />ClawHub 商店 <span className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-1.5 py-0.5 rounded-full">{CLAWHUB_CATALOG.length}</span>
         </button>
       </div>
 
       {msg && (
-        <div className={`px-3 py-2 rounded-lg text-xs ${msg.includes('失败') ? 'bg-red-50 dark:bg-red-950 text-red-600' : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600'}`}>
+        <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 ${msg.includes('失败') ? 'bg-red-50 dark:bg-red-900/30 text-red-600' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600'}`}>
+          {msg.includes('失败') ? <X size={16} /> : <Check size={16} />}
           {msg}
         </div>
       )}
 
       {tab === 'installed' && (
-        <>
+        <div className="space-y-4">
           {/* Filters */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-xs">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索技能..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent" />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="relative flex-1 min-w-[240px] max-w-md">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索已安装的技能..."
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all" />
             </div>
-            <div className="flex gap-1">
+            <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
               {(['all', 'enabled', 'disabled'] as const).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className={`px-2.5 py-1 text-[11px] rounded-md transition-colors ${filter === f ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 font-medium' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                  className={`px-3 py-1.5 text-xs rounded-md transition-all font-medium ${filter === f ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
                   {f === 'all' ? '全部' : f === 'enabled' ? '已启用' : '已禁用'}
                 </button>
               ))}
@@ -176,89 +177,129 @@ export default function Skills() {
 
           {/* Skills list */}
           {loading ? (
-            <div className="text-center py-12 text-gray-400 text-xs">加载中...</div>
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400 gap-3">
+              <Loader2 size={32} className="animate-spin text-violet-500/50" />
+              <p className="text-sm">正在加载技能列表...</p>
+            </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-xs">
-              {search ? '没有匹配的技能' : '暂无已安装的技能'}
+            <div className="flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+              <Package size={32} className="opacity-20 mb-2" />
+              <p className="text-sm">暂无匹配的技能</p>
             </div>
           ) : (
-            <div className="grid gap-2">
+            <div className="grid gap-3">
               {filtered.map(skill => (
-                <div key={skill.id} className="card px-4 py-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-indigo-100 dark:from-violet-900 dark:to-indigo-900 flex items-center justify-center shrink-0">
-                    <Sparkles size={14} className="text-violet-600 dark:text-violet-400" />
+                <div key={skill.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 flex items-center gap-4 hover:shadow-md transition-all group">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${skill.enabled ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                    <Sparkles size={20} className={skill.enabled ? 'text-white' : 'text-gray-400'} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{skill.name}</span>
-                      {skill.version && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">v{skill.version}</span>}
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base font-bold text-gray-900 dark:text-white">{skill.name}</span>
+                      {skill.version && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 font-mono">v{skill.version}</span>}
                       {getSourceBadge(skill.source)}
                       {skill.requires && (skill.requires.env || skill.requires.bins) && (
-                        <button onClick={() => setConfigSkill(skill)} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950 text-amber-600 hover:bg-amber-100 dark:hover:bg-amber-900">
+                        <button onClick={() => setConfigSkill(skill)} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 border border-amber-100 dark:border-amber-800 hover:bg-amber-100 transition-colors">
                           需要配置
                         </button>
                       )}
                     </div>
-                    {skill.description && <p className="text-[11px] text-gray-500 mt-0.5 truncate">{skill.description}</p>}
+                    {skill.description && <p className="text-xs text-gray-500 truncate">{skill.description}</p>}
                   </div>
-                  <button onClick={() => toggleSkill(skill.id)} className="shrink-0">
-                    {skill.enabled ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} className="text-gray-300" />}
-                  </button>
+                  <div className="flex items-center gap-4 border-l border-gray-100 dark:border-gray-700 pl-4">
+                    <div className="text-right hidden sm:block">
+                      <div className="text-[10px] text-gray-400">状态</div>
+                      <div className={`text-xs font-medium ${skill.enabled ? 'text-emerald-600' : 'text-gray-400'}`}>
+                        {skill.enabled ? '运行中' : '已停止'}
+                      </div>
+                    </div>
+                    <button onClick={() => toggleSkill(skill.id)} className="relative group/toggle focus:outline-none">
+                      {skill.enabled 
+                        ? <ToggleRight size={32} className="text-emerald-500 transition-transform group-hover/toggle:scale-105" /> 
+                        : <ToggleLeft size={32} className="text-gray-300 dark:text-gray-600 transition-transform group-hover/toggle:scale-105" />}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {tab === 'clawhub' && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 max-w-xs">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索 ClawHub 技能..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent" />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-4 bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-violet-100 dark:border-violet-800/30">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+                <Globe size={20} className="text-violet-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">ClawHub 技能商店</h3>
+                <p className="text-xs text-gray-500">发现更多社区贡献的优质技能</p>
+              </div>
             </div>
-            <button onClick={handleSyncClawHub} disabled={syncing}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400">
-              {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              {syncing ? '同步中...' : '同步商店'}
-            </button>
-            <a href="https://clawhub.ai/skills?sort=downloads" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900">
-              <ExternalLink size={13} />访问 ClawHub
-            </a>
+            <div className="flex gap-2">
+              <button onClick={handleSyncClawHub} disabled={syncing}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 shadow-sm transition-colors">
+                {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                {syncing ? '同步中...' : '同步商店'}
+              </button>
+              <a href="https://clawhub.ai/skills?sort=downloads" target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 shadow-sm shadow-violet-200 dark:shadow-none transition-colors">
+                <ExternalLink size={14} />前往官网
+              </a>
+            </div>
           </div>
-          <div className="grid gap-2">
+
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="搜索 ClawHub 技能..."
+              className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all" />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {hubFiltered.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 text-xs">没有匹配的技能</div>
+              <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-400 border-2 border-dashed border-gray-100 dark:border-gray-800 rounded-xl">
+                <Package size={32} className="opacity-20 mb-2" />
+                <p className="text-sm">没有找到相关技能</p>
+              </div>
             ) : hubFiltered.map(skill => {
               const isInstalled = installedIds.has(skill.id);
               return (
-                <div key={skill.id} className="card px-4 py-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900 dark:to-cyan-900 flex items-center justify-center shrink-0">
-                    <Globe size={14} className="text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{skill.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">v{skill.version}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950 text-cyan-600">{skill.category}</span>
+                <div key={skill.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 flex flex-col h-full hover:shadow-md transition-all group">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-800/30">
+                        <Globe size={18} className="text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1" title={skill.name}>{skill.name}</h4>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 font-mono">v{skill.version}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400">{skill.category}</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-gray-500 mt-0.5 truncate">{skill.description}</p>
-                    {skill.descriptionZh && <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5 truncate">{skill.descriptionZh}</p>}
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  
+                  <div className="flex-1 mb-4">
+                    <p className="text-xs text-gray-500 line-clamp-2 mb-1" title={skill.description}>{skill.description}</p>
+                    {skill.descriptionZh && <p className="text-xs text-gray-400 dark:text-gray-500 line-clamp-2">{skill.descriptionZh}</p>}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 pt-3 border-t border-gray-50 dark:border-gray-800">
                     <a href={`https://clawhub.ai/skills/${skill.id}`} target="_blank" rel="noopener noreferrer"
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950" title="在 ClawHub 查看">
-                      <ExternalLink size={13} />
+                      className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors" title="在 ClawHub 查看详情">
+                      <ExternalLink size={16} />
                     </a>
                     {isInstalled ? (
-                      <span className="flex items-center gap-1 text-[11px] text-emerald-600"><Check size={13} />已安装</span>
+                      <button disabled className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 cursor-default">
+                        <Check size={14} />已安装
+                      </button>
                     ) : (
                       <button onClick={() => handleInstallHint(skill.id)} disabled={installing === skill.id}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
-                        {installing === skill.id ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 disabled:opacity-50 transition-colors">
+                        {installing === skill.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                         安装
                       </button>
                     )}
@@ -272,55 +313,74 @@ export default function Skills() {
 
       {/* Config Modal */}
       {configSkill && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setConfigSkill(null)}>
-          <div className="bg-white dark:bg-gray-900 rounded-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">{configSkill.name} - 配置要求</h3>
-              <button onClick={() => setConfigSkill(null)} className="text-gray-400 hover:text-gray-600">×</button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setConfigSkill(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-gray-100 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Sparkles size={16} className="text-violet-500" />
+                {configSkill.name} 配置要求
+              </h3>
+              <button onClick={() => setConfigSkill(null)} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <X size={18} />
+              </button>
             </div>
-            <div className="flex-1 overflow-auto p-4 space-y-4">
+            <div className="flex-1 overflow-auto p-6 space-y-6">
               {configSkill.requires?.env && configSkill.requires.env.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">需要的环境变量</h4>
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                    <Key size={14} /> 环境变量
+                  </h4>
                   {configSkill.requires.env.map(envVar => (
-                    <div key={envVar} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                    <div key={envVar} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
                       <div className="flex items-center justify-between mb-2">
-                        <code className="text-xs font-mono text-indigo-600 dark:text-indigo-400">{envVar}</code>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">必需</span>
+                        <code className="text-sm font-bold font-mono text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-2 py-0.5 rounded">{envVar}</code>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium">必需</span>
                       </div>
-                      <p className="text-[11px] text-gray-600 dark:text-gray-400 mb-2">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
                         请在 OpenClaw 配置中设置此环境变量，或在系统配置的"认证密钥"部分添加。
                       </p>
-                      <div className="bg-gray-900 dark:bg-black rounded p-2 text-[10px] font-mono text-gray-300">
-                        <div className="text-gray-500"># 方法1: 在 ~/.openclaw/openclaw.json 中添加</div>
-                        <div>"env": {"{"} "vars": {"{"} "{envVar}": "your_key_here" {"}"} {"}"}</div>
-                        <div className="mt-2 text-gray-500"># 方法2: 在系统环境变量中设置</div>
-                        <div>export {envVar}="your_key_here"</div>
+                      <div className="bg-gray-900 dark:bg-black rounded-lg p-3 text-xs font-mono text-gray-300 space-y-2 overflow-x-auto">
+                        <div>
+                          <span className="text-gray-500 block mb-1"># 方法1: ~/.openclaw/openclaw.json</span>
+                          <span className="text-emerald-400">"env"</span>: <span className="text-yellow-300">{"{"}</span> <span className="text-emerald-400">"vars"</span>: <span className="text-yellow-300">{"{"}</span> <span className="text-cyan-300">"{envVar}"</span>: <span className="text-orange-300">"your_key_here"</span> <span className="text-yellow-300">{"}"}</span> <span className="text-yellow-300">{"}"}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block mb-1"># 方法2: 系统环境变量</span>
+                          <span className="text-purple-400">export</span> {envVar}=<span className="text-orange-300">"your_key_here"</span>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
               {configSkill.requires?.bins && configSkill.requires.bins.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300">需要的二进制工具</h4>
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                    <Package size={14} /> 二进制工具
+                  </h4>
                   {configSkill.requires.bins.map(bin => (
-                    <div key={bin} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
+                    <div key={bin} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
                       <div className="flex items-center justify-between mb-2">
-                        <code className="text-xs font-mono text-blue-600 dark:text-blue-400">{bin}</code>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">命令行工具</span>
+                        <code className="text-sm font-bold font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">{bin}</code>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium">CLI 工具</span>
                       </div>
-                      <p className="text-[11px] text-gray-600 dark:text-gray-400 mb-2">
-                        此技能需要 <code className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-[10px]">{bin}</code> 命令行工具。
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                        此技能需要系统中安装 <code className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-bold">{bin}</code> 命令行工具。
                       </p>
                       {configSkill.metadata?.openclaw?.install && (
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-gray-500 mb-1">安装方法：</div>
+                        <div className="bg-gray-900 dark:bg-black rounded-lg p-3 text-xs font-mono text-gray-300 space-y-3">
                           {configSkill.metadata.openclaw.install.map((inst: any, idx: number) => (
-                            <div key={idx} className="bg-gray-900 dark:bg-black rounded p-2 text-[10px] font-mono text-gray-300">
-                              <div className="text-gray-500"># {inst.label || `方法 ${idx + 1}`}</div>
-                              {inst.kind === 'brew' && <div>brew install {inst.formula}</div>}
-                              {inst.kind === 'apt' && <div>sudo apt install {inst.package}</div>}
+                            <div key={idx}>
+                              <div className="text-gray-500 mb-1"># {inst.label || `安装方法 ${idx + 1}`} ({inst.kind})</div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-emerald-400">$</span>
+                                {inst.kind === 'brew' && <span>brew install {inst.formula}</span>}
+                                {inst.kind === 'apt' && <span>sudo apt install -y {inst.package}</span>}
+                                {inst.kind === 'npm' && <span>npm install -g {inst.package}</span>}
+                                {inst.kind === 'pip' && <span>pip install {inst.package}</span>}
+                                {inst.kind === 'go' && <span>go install {inst.package}</span>}
+                                {inst.kind === 'cargo' && <span>cargo install {inst.package}</span>}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -330,8 +390,10 @@ export default function Skills() {
                 </div>
               )}
               {configSkill.path && (
-                <div className="text-[10px] text-gray-400 pt-2 border-t border-gray-200 dark:border-gray-800">
-                  技能路径: <code className="text-gray-600 dark:text-gray-300">{configSkill.path}</code>
+                <div className="text-xs text-gray-400 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                  <FolderOpen size={14} />
+                  <span>安装路径:</span>
+                  <code className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono text-[11px]">{configSkill.path}</code>
                 </div>
               )}
             </div>

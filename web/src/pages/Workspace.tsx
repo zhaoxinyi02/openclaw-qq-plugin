@@ -236,34 +236,42 @@ export default function Workspace() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">工作区文件管理</h1>
-        <button onClick={() => setShowCfg(!showCfg)} className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-          <Settings2 size={15} /> 设置
+      <div className="flex items-center justify-between shrink-0">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">工作区文件管理</h1>
+          <p className="text-sm text-gray-500 mt-1">管理 OpenClaw 的配置文件与工作区数据</p>
+        </div>
+        <button onClick={() => setShowCfg(!showCfg)} className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors shadow-sm">
+          <Settings2 size={14} /> 设置
         </button>
       </div>
 
       {/* Toast */}
       {toast && (
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm ${toast.ok ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300'}`}>
-          {toast.ok ? <Check size={15} /> : <AlertTriangle size={15} />} {toast.t}
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-200 ${toast.ok ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'}`}>
+          {toast.ok ? <Check size={16} /> : <AlertTriangle size={16} />} {toast.t}
         </div>
       )}
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
           {[
-            { icon: <HardDrive size={13} />, label: '总大小', val: stats.totalSizeHuman },
-            { icon: <File size={13} />, label: '文件数', val: String(stats.totalFiles) },
-            { icon: <Clock size={13} />, label: '过期文件', val: String(stats.oldFiles) },
-            { icon: <AlertTriangle size={13} />, label: '自动清理', val: config?.autoCleanEnabled ? `${config.autoCleanDays} 天` : '关闭' },
+            { icon: <HardDrive size={18} />, label: '总大小', val: stats.totalSizeHuman, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+            { icon: <File size={18} />, label: '文件数', val: String(stats.totalFiles), color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-900/20' },
+            { icon: <Clock size={18} />, label: '过期文件', val: String(stats.oldFiles), color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+            { icon: <AlertTriangle size={18} />, label: '自动清理', val: config?.autoCleanEnabled ? `${config.autoCleanDays} 天` : '关闭', color: config?.autoCleanEnabled ? 'text-emerald-500' : 'text-gray-400', bg: config?.autoCleanEnabled ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-gray-100 dark:bg-gray-800' },
           ].map((s, i) => (
-            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-3">
-              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">{s.icon} {s.label}</div>
-              <div className="text-lg font-semibold mt-0.5">{s.val}</div>
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-4 flex items-center gap-4 transition-all hover:shadow-md">
+              <div className={`p-2.5 rounded-xl ${s.bg} ${s.color}`}>
+                {s.icon}
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">{s.label}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white mt-0.5">{s.val}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -271,56 +279,80 @@ export default function Workspace() {
 
       {/* Config panel */}
       {showCfg && config && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 space-y-4">
-          <h3 className="font-semibold text-sm">自动清理配置</h3>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={config.autoCleanEnabled} onChange={e => setConfig({ ...config, autoCleanEnabled: e.target.checked })} className="rounded" />
-            启用自动清理
-          </label>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600 dark:text-gray-400 w-20">过期天数</span>
-            <input type="number" min={1} max={365} value={config.autoCleanDays} onChange={e => setConfig({ ...config, autoCleanDays: parseInt(e.target.value) || 30 })}
-              className="w-24 px-2 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent" />
-            <span className="text-xs text-gray-500">天</span>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5 space-y-5 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-800">
+            <Settings2 size={16} className="text-violet-500" />
+            <h3 className="font-bold text-gray-900 dark:text-white">自动清理配置</h3>
           </div>
+          
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 cursor-pointer hover:border-violet-200 dark:hover:border-violet-800 transition-colors">
+              <div className="relative flex items-center">
+                <input type="checkbox" checked={config.autoCleanEnabled} onChange={e => setConfig({ ...config, autoCleanEnabled: e.target.checked })} 
+                  className="peer sr-only" />
+                <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-300 dark:peer-focus:ring-violet-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+              </div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">启用自动清理</span>
+            </label>
+            
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">过期天数</span>
+              <div className="relative">
+                <input type="number" min={1} max={365} value={config.autoCleanDays} onChange={e => setConfig({ ...config, autoCleanDays: parseInt(e.target.value) || 30 })}
+                  className="w-20 pl-3 pr-8 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 text-center" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">天</span>
+              </div>
+            </div>
+          </div>
+          
           <div>
-            <span className="text-sm text-gray-600 dark:text-gray-400 block mb-1">排除文件（每行一个模式）</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-2">排除文件（每行一个模式）</span>
             <textarea value={config.excludePatterns.join('\n')} onChange={e => setConfig({ ...config, excludePatterns: e.target.value.split('\n').filter(Boolean) })}
-              rows={3} className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent font-mono" />
+              rows={3} className="w-full px-3.5 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 font-mono resize-none" />
           </div>
-          <div className="flex gap-2">
-            <button onClick={saveCfg} className="px-4 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">保存配置</button>
-            <button onClick={handleClean} className="px-4 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">立即清理过期文件</button>
+          
+          <div className="flex gap-3 pt-2">
+            <button onClick={saveCfg} className="px-5 py-2 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 shadow-sm shadow-violet-200 dark:shadow-none transition-all hover:shadow-md hover:shadow-violet-200 dark:hover:shadow-none">
+              保存配置
+            </button>
+            <button onClick={handleClean} className="px-5 py-2 text-xs font-medium rounded-lg bg-white dark:bg-gray-800 border border-red-200 dark:border-red-900/30 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+              立即清理过期文件
+            </button>
           </div>
         </div>
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 text-sm flex-1 min-w-0 overflow-x-auto">
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-100 dark:border-gray-700/50 shadow-sm shrink-0">
+        <div className="flex items-center gap-1.5 text-sm flex-1 min-w-0 overflow-x-auto px-2 scrollbar-hide">
           {crumbs().map((c, i, a) => (
-            <span key={c.p + i} className="flex items-center gap-1 shrink-0">
-              {i > 0 && <ChevronRight size={13} className="text-gray-400" />}
-              <button onClick={() => nav(c.p)} className={`hover:text-indigo-600 dark:hover:text-indigo-400 ${i === a.length - 1 ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
-                {i === 0 ? <Home size={15} /> : c.l}
+            <span key={c.p + i} className="flex items-center gap-1.5 shrink-0">
+              {i > 0 && <ChevronRight size={14} className="text-gray-300 dark:text-gray-600" />}
+              <button onClick={() => nav(c.p)} 
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${i === a.length - 1 ? 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 font-semibold' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'}`}>
+                {i === 0 ? <Home size={14} /> : c.l}
               </button>
             </span>
           ))}
         </div>
-        <div className="flex items-center gap-1.5">
-          <button onClick={() => { load(curPath); loadStats(); }} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800" title="刷新">
+        
+        <div className="flex items-center gap-2 pl-2 border-l border-gray-100 dark:border-gray-700/50">
+          <button onClick={() => { load(curPath); loadStats(); }} className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 transition-colors" title="刷新">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button onClick={() => setShowMk(true)} className="flex items-center gap-1 px-2.5 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
-            <FolderPlus size={15} /> 新建
+          
+          <button onClick={() => setShowMk(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+            <FolderPlus size={14} /> 新建
           </button>
-          <label className={`flex items-center gap-1 px-2.5 py-1.5 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
-            <Upload size={15} /> {uploading ? '上传中...' : '上传'}
+          
+          <label className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 shadow-sm shadow-violet-200 dark:shadow-none transition-all cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <Upload size={14} /> {uploading ? '上传中...' : '上传'}
             <input ref={fRef} type="file" multiple className="hidden" onChange={handleUpload} />
           </label>
+          
           {sel.size > 0 && (
-            <button onClick={handleDel} className="flex items-center gap-1 px-2.5 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700">
-              <Trash2 size={15} /> 删除 ({sel.size})
+            <button onClick={handleDel} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-100 dark:border-red-900/30 transition-colors animate-in zoom-in-95 duration-200">
+              <Trash2 size={14} /> 删除 ({sel.size})
             </button>
           )}
         </div>
@@ -328,46 +360,62 @@ export default function Workspace() {
 
       {/* Mkdir */}
       {showMk && (
-        <div className="flex items-center gap-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
-          <FolderPlus size={16} className="text-gray-400 shrink-0" />
+        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-violet-200 dark:border-violet-800 rounded-xl p-3 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600">
+            <FolderPlus size={16} />
+          </div>
           <input autoFocus value={mkName} onChange={e => setMkName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleMk(); if (e.key === 'Escape') { setShowMk(false); setMkName(''); } }}
-            placeholder="文件夹名称" className="flex-1 px-2 py-1 text-sm bg-transparent border-b border-gray-200 dark:border-gray-700 outline-none" />
-          <button onClick={handleMk} className="p-1 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 rounded"><Check size={16} /></button>
-          <button onClick={() => { setShowMk(false); setMkName(''); }} className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"><X size={16} /></button>
+            placeholder="输入新文件夹名称..." className="flex-1 px-3 py-1.5 text-sm bg-transparent border-b border-gray-200 dark:border-gray-700 focus:border-violet-500 outline-none transition-colors" />
+          <div className="flex gap-1">
+            <button onClick={handleMk} className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"><Check size={16} /></button>
+            <button onClick={() => { setShowMk(false); setMkName(''); }} className="p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"><X size={16} /></button>
+          </div>
         </div>
       )}
 
       {/* Preview modal */}
       {preview && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
-          <div className="bg-white dark:bg-gray-900 rounded-xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-              <span className="text-sm font-medium truncate">{preview.path.split('/').pop()}</span>
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-gray-100 dark:border-gray-800" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500">
+                  <Eye size={16} />
+                </div>
+                <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{preview.path.split('/').pop()}</span>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
                 {preview.type === 'text' && preview.path.endsWith('.md') && (
-                  <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800">
                     <button onClick={() => setMdRender(true)}
-                      className={`px-2.5 py-1 text-xs ${mdRender ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                      <Eye size={12} className="inline mr-1" />渲染
+                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${mdRender ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <Eye size={12} className="inline mr-1.5" />渲染
                     </button>
+                    <div className="w-px bg-gray-200 dark:bg-gray-700 self-stretch"></div>
                     <button onClick={() => setMdRender(false)}
-                      className={`px-2.5 py-1 text-xs ${!mdRender ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
-                      <FileCode size={12} className="inline mr-1" />源码
+                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${!mdRender ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <FileCode size={12} className="inline mr-1.5" />源码
                     </button>
                   </div>
                 )}
-                <a href={api.workspaceDownloadUrl(preview.path)} className="text-xs text-indigo-600 hover:underline">下载</a>
-                <button onClick={() => setPreview(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"><X size={16} /></button>
+                <a href={api.workspaceDownloadUrl(preview.path)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
+                  <Download size={12} /> 下载
+                </a>
+                <button onClick={() => setPreview(null)} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors">
+                  <X size={18} />
+                </button>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-4">
+            <div className="flex-1 overflow-auto p-6 bg-gray-50/30 dark:bg-black/20">
               {preview.type === 'image' ? (
-                <img src={api.workspacePreviewUrl(preview.path)} alt={preview.path} className="max-w-full mx-auto rounded" />
+                <div className="flex items-center justify-center h-full">
+                  <img src={api.workspacePreviewUrl(preview.path)} alt={preview.path} className="max-w-full max-h-full rounded-lg shadow-sm" />
+                </div>
               ) : preview.path.endsWith('.md') && mdRender ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: simpleMarkdown(preview.content || '') }} />
+                <div className="prose prose-sm dark:prose-invert max-w-none bg-white dark:bg-gray-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800" dangerouslySetInnerHTML={{ __html: simpleMarkdown(preview.content || '') }} />
               ) : (
-                <pre className="text-xs font-mono whitespace-pre-wrap break-all text-gray-700 dark:text-gray-300">{preview.content}</pre>
+                <pre className="text-xs font-mono whitespace-pre-wrap break-all text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm h-full overflow-auto">{preview.content}</pre>
               )}
             </div>
           </div>
@@ -375,68 +423,85 @@ export default function Workspace() {
       )}
 
       {/* File table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="hidden sm:grid grid-cols-[32px_1fr_minmax(120px,1.5fr)_80px_100px_80px] gap-2 px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800">
-          <div><input type="checkbox" checked={sortedFiles.length > 0 && sel.size === sortedFiles.length} onChange={selAll} className="rounded" /></div>
-          <button onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200 text-left">名称 <SortIcon k="name" /></button>
-          <div className="flex items-center gap-1"><MessageSquare size={12} /> 备注</div>
-          <button onClick={() => handleSort('size')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">大小 <SortIcon k="size" /></button>
-          <button onClick={() => handleSort('modifiedAt')} className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200">修改时间 <SortIcon k="modifiedAt" /></button>
-          <div>操作</div>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700/50 overflow-hidden shadow-sm flex-1 flex flex-col min-h-0">
+        <div className="hidden sm:grid grid-cols-[40px_1fr_minmax(120px,1.5fr)_90px_120px_100px] gap-4 px-5 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 uppercase tracking-wider">
+          <div className="flex items-center justify-center"><input type="checkbox" checked={sortedFiles.length > 0 && sel.size === sortedFiles.length} onChange={selAll} className="rounded w-3.5 h-3.5 border-gray-300 text-violet-600 focus:ring-violet-500" /></div>
+          <button onClick={() => handleSort('name')} className="flex items-center gap-1.5 hover:text-gray-700 dark:hover:text-gray-200 text-left transition-colors">名称 <SortIcon k="name" /></button>
+          <div className="flex items-center gap-1.5"><MessageSquare size={12} /> 备注</div>
+          <button onClick={() => handleSort('size')} className="flex items-center gap-1.5 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">大小 <SortIcon k="size" /></button>
+          <button onClick={() => handleSort('modifiedAt')} className="flex items-center gap-1.5 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">修改时间 <SortIcon k="modifiedAt" /></button>
+          <div className="text-right pr-2">操作</div>
         </div>
 
-        {loading ? (
-          <div className="p-8 text-center text-gray-400"><RefreshCw size={20} className="animate-spin mx-auto mb-2" /> 加载中...</div>
-        ) : sortedFiles.length === 0 ? (
-          <div className="p-8 text-center text-gray-400"><FolderOpen size={24} className="mx-auto mb-2 opacity-50" /> 空文件夹</div>
-        ) : (
-          sortedFiles.map(f => (
-            <div key={f.path}
-              className={`grid grid-cols-[32px_1fr_minmax(120px,1.5fr)_80px_100px_80px] gap-2 px-4 py-2 items-center text-sm border-b border-gray-50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${sel.has(f.path) ? 'bg-indigo-50/50 dark:bg-indigo-950/30' : ''}`}>
-              <div><input type="checkbox" checked={sel.has(f.path)} onChange={() => toggle(f.path)} className="rounded" /></div>
-              <div className="flex items-center gap-2 min-w-0">
-                <FIcon f={f} />
-                {f.isDirectory ? (
-                  <button onClick={() => nav(f.path)} className="truncate text-left hover:text-indigo-600 dark:hover:text-indigo-400 font-medium">{f.name}</button>
-                ) : (
-                  <button onClick={() => canPreview(f.extension) ? openPreview(f) : undefined}
-                    className={`truncate text-left ${canPreview(f.extension) ? 'hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer' : ''}`}>{f.name}</button>
-                )}
-              </div>
-              <div className="min-w-0">
-                {editingNote === f.path ? (
-                  <div className="flex items-center gap-1">
-                    <input autoFocus value={noteText} onChange={e => setNoteText(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') saveNote(f.path); if (e.key === 'Escape') setEditingNote(null); }}
-                      className="flex-1 px-1.5 py-0.5 text-xs border border-gray-200 dark:border-gray-700 rounded bg-transparent min-w-0" placeholder="添加备注..." />
-                    <button onClick={() => saveNote(f.path)} className="text-emerald-500 hover:text-emerald-600"><Check size={13} /></button>
-                    <button onClick={() => setEditingNote(null)} className="text-gray-400 hover:text-gray-600"><X size={13} /></button>
-                  </div>
-                ) : (
-                  <button onClick={() => { setEditingNote(f.path); setNoteText(notes[f.path] || ''); }}
-                    className="text-xs text-gray-400 dark:text-gray-500 hover:text-indigo-500 truncate block max-w-full text-left"
-                    title={notes[f.path] || '点击添加备注'}>
-                    {notes[f.path] || <span className="opacity-0 group-hover:opacity-50">—</span>}
-                  </button>
-                )}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{f.isDirectory ? '-' : f.sizeHuman}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">{relTime(f.modifiedAt)}</div>
-              <div className="flex items-center gap-0.5">
-                {!f.isDirectory && canPreview(f.extension) && (
-                  <button onClick={() => openPreview(f)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" title="预览">
-                    <Eye size={14} className="text-gray-400" />
-                  </button>
-                )}
-                {!f.isDirectory && (
-                  <a href={api.workspaceDownloadUrl(f.path)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 inline-block" title="下载">
-                    <Download size={14} className="text-gray-400" />
-                  </a>
-                )}
-              </div>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+              <RefreshCw size={24} className="animate-spin text-violet-500/50" />
+              <p className="text-sm">加载文件列表中...</p>
             </div>
-          ))
-        )}
+          ) : sortedFiles.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+              <FolderOpen size={32} className="opacity-20" />
+              <p className="text-sm">此文件夹为空</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
+              {sortedFiles.map(f => (
+                <div key={f.path}
+                  className={`grid grid-cols-[40px_1fr_minmax(120px,1.5fr)_90px_120px_100px] gap-4 px-5 py-2.5 items-center text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group ${sel.has(f.path) ? 'bg-violet-50/60 dark:bg-violet-900/10' : ''}`}>
+                  <div className="flex items-center justify-center">
+                    <input type="checkbox" checked={sel.has(f.path)} onChange={() => toggle(f.path)} className="rounded w-3.5 h-3.5 border-gray-300 text-violet-600 focus:ring-violet-500" />
+                  </div>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="shrink-0 transition-transform group-hover:scale-110 duration-200">
+                      <FIcon f={f} />
+                    </div>
+                    {f.isDirectory ? (
+                      <button onClick={() => nav(f.path)} className="truncate text-left font-semibold text-gray-700 dark:text-gray-200 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">{f.name}</button>
+                    ) : (
+                      <button onClick={() => canPreview(f.extension) ? openPreview(f) : undefined}
+                        className={`truncate text-left ${canPreview(f.extension) ? 'text-gray-700 dark:text-gray-200 hover:text-violet-600 dark:hover:text-violet-400 cursor-pointer font-medium' : 'text-gray-600 dark:text-gray-400'}`}>{f.name}</button>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    {editingNote === f.path ? (
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-gray-900 border border-violet-200 dark:border-violet-800 rounded-lg p-1 shadow-sm">
+                        <input autoFocus value={noteText} onChange={e => setNoteText(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') saveNote(f.path); if (e.key === 'Escape') setEditingNote(null); }}
+                          className="flex-1 px-2 py-0.5 text-xs bg-transparent min-w-0 outline-none" placeholder="备注..." />
+                        <button onClick={() => saveNote(f.path)} className="text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 p-0.5 rounded"><Check size={12} /></button>
+                        <button onClick={() => setEditingNote(null)} className="text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 p-0.5 rounded"><X size={12} /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setEditingNote(f.path); setNoteText(notes[f.path] || ''); }}
+                        className="text-xs text-gray-400 hover:text-violet-500 truncate block max-w-full text-left transition-colors py-1 px-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800/50 -ml-1"
+                        title={notes[f.path] || '点击添加备注'}>
+                        {notes[f.path] || <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1"><Edit3 size={10} /> 添加备注</span>}
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-500 font-mono">{f.isDirectory ? '-' : f.sizeHuman}</div>
+                  <div className="text-xs text-gray-500">{relTime(f.modifiedAt)}</div>
+                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {!f.isDirectory && canPreview(f.extension) && (
+                      <button onClick={() => openPreview(f)} className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors" title="预览">
+                        <Eye size={14} />
+                      </button>
+                    )}
+                    {!f.isDirectory && (
+                      <a href={api.workspaceDownloadUrl(f.path)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors" title="下载">
+                        <Download size={14} />
+                      </a>
+                    )}
+                    <button onClick={() => { setSel(new Set([f.path])); setTimeout(handleDel, 0); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="删除">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
