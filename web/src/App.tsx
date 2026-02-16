@@ -26,7 +26,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route element={<Layout onLogout={auth.logout} napcatStatus={ws.napcatStatus} wechatStatus={ws.wechatStatus} />}>
+      <Route element={<Layout onLogout={auth.logout} napcatStatus={ws.napcatStatus} wechatStatus={ws.wechatStatus} openclawStatus={ws.openclawStatus} />}>
         <Route path="/" element={<Dashboard ws={ws} />} />
         <Route path="/logs" element={<ActivityLog ws={ws} />} />
         <Route path="/channels" element={<Channels />} />

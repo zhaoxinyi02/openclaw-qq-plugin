@@ -44,16 +44,22 @@ export default function Dashboard({ ws }: DashboardProps) {
   const qqCount = todayLogs.filter(e => e.source === 'qq').length;
   const botCount = todayLogs.filter(e => e.source === 'openclaw').length;
 
-  // Build connected channels dynamically
-  const connectedChannels: { name: string; details: { label: string; value: string }[] }[] = [];
-  if (nc.connected) {
-    connectedChannels.push({ name: 'QQ (NapCat)', details: [
+  // Build connected channels dynamically — only show if BOTH enabled in config AND connected
+  const qqEnabled = oc.qqChannelEnabled || oc.qqPluginEnabled;
+  const connectedChannels: { name: string; status: string; details: { label: string; value: string }[] }[] = [];
+  if (qqEnabled && nc.connected) {
+    connectedChannels.push({ name: 'QQ (NapCat)', status: '已连接', details: [
       { label: '昵称', value: nc.nickname || '-' }, { label: 'QQ号', value: nc.selfId || '-' },
       { label: '群数', value: String(nc.groupCount || 0) }, { label: '好友数', value: String(nc.friendCount || 0) },
     ]});
+  } else if (qqEnabled && !nc.connected) {
+    connectedChannels.push({ name: 'QQ (NapCat)', status: '未登录', details: [
+      { label: '昵称', value: '-' }, { label: 'QQ号', value: '-' },
+      { label: '群数', value: '-' }, { label: '好友数', value: '-' },
+    ]});
   }
   if (wc.loggedIn) {
-    connectedChannels.push({ name: '微信', details: [
+    connectedChannels.push({ name: '微信', status: '已连接', details: [
       { label: '用户', value: wc.name || '-' }, { label: '状态', value: '已登录' },
     ]});
   }
@@ -89,9 +95,9 @@ export default function Dashboard({ ws }: DashboardProps) {
           {connectedChannels.map(ch => (
             <div key={ch.name} className="card p-3">
               <div className="flex items-center gap-2 mb-2">
-                <Wifi size={14} className="text-emerald-500" />
+                <Wifi size={14} className={ch.status === '已连接' ? 'text-emerald-500' : 'text-gray-400'} />
                 <span className="text-xs font-semibold">{ch.name}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-50 dark:bg-emerald-950 text-emerald-600">已连接</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ch.status === '已连接' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600' : 'bg-amber-50 dark:bg-amber-950 text-amber-600'}`}>{ch.status}</span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                 {ch.details.map(d => (
@@ -207,7 +213,11 @@ function shortenModel(m: string) {
 function formatLogTime(ts: number) {
   const d = new Date(ts);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const now = new Date();
+  const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  if (isToday) return time;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
 }
 
 function formatUptime(s: number) {

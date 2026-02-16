@@ -3,6 +3,7 @@ import path from 'path';
 
 export interface AdminConfigData {
   server: { port: number; host: string; token: string };
+  system: { sudoPassword: string };
   openclaw: { configPath: string; autoSetup: boolean };
   napcat: { wsUrl: string; accessToken: string; webuiPort: number };
   wechat: { apiUrl: string; token: string; enabled: boolean; autoReply: boolean };
@@ -36,6 +37,7 @@ export interface AdminConfigData {
 
 const DEFAULTS: AdminConfigData = {
   server: { port: 6199, host: '0.0.0.0', token: 'openclaw-qq-admin' },
+  system: { sudoPassword: '' },
   openclaw: { configPath: '/root/.openclaw/openclaw.json', autoSetup: true },
   napcat: { wsUrl: 'ws://127.0.0.1:3001', accessToken: '', webuiPort: 6099 },
   wechat: {

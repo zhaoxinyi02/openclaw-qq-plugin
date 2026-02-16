@@ -15,9 +15,9 @@ const navItems = [
   { to: '/config', icon: Settings, label: '系统配置' },
 ];
 
-interface Props { onLogout: () => void; napcatStatus: any; wechatStatus?: any; }
+interface Props { onLogout: () => void; napcatStatus: any; wechatStatus?: any; openclawStatus?: any; }
 
-export default function Layout({ onLogout, napcatStatus, wechatStatus }: Props) {
+export default function Layout({ onLogout, napcatStatus, wechatStatus, openclawStatus }: Props) {
   const [dark, setDark] = useState(() => {
     const s = localStorage.getItem('theme');
     if (s === 'dark' || (!s && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -37,13 +37,16 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus }: Props) 
     });
   };
 
-  // Only show connected channels
-  const connectedChannels: { label: string; detail: string }[] = [];
-  if (napcatStatus?.connected) {
-    connectedChannels.push({ label: 'QQ', detail: `${napcatStatus.nickname || 'QQ'}${napcatStatus.selfId ? ` (${napcatStatus.selfId})` : ''}` });
+  // Only show channels that are BOTH enabled in config AND connected
+  const qqEnabled = openclawStatus?.qqChannelEnabled || openclawStatus?.qqPluginEnabled;
+  const connectedChannels: { label: string; detail: string; connected: boolean }[] = [];
+  if (qqEnabled && napcatStatus?.connected) {
+    connectedChannels.push({ label: 'QQ', detail: `${napcatStatus.nickname || 'QQ'}${napcatStatus.selfId ? ` (${napcatStatus.selfId})` : ''}`, connected: true });
+  } else if (qqEnabled && !napcatStatus?.connected) {
+    connectedChannels.push({ label: 'QQ', detail: '未登录', connected: false });
   }
   if (wechatStatus?.connected) {
-    connectedChannels.push({ label: '微信', detail: wechatStatus.name || '已连接' });
+    connectedChannels.push({ label: '微信', detail: wechatStatus.name || '已连接', connected: true });
   }
 
   return (
@@ -68,7 +71,7 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus }: Props) 
           <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800/50 space-y-1">
             {connectedChannels.map(ch => (
               <div key={ch.label} className="flex items-center gap-2 text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <span className={`w-1.5 h-1.5 rounded-full ${ch.connected ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                 <span className="text-gray-500 dark:text-gray-400 truncate">{ch.label}: {ch.detail}</span>
               </div>
             ))}

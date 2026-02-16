@@ -188,3 +188,16 @@ docker compose logs openclaw-qq 2>&1 | head -50
 - 确认 `openclaw.json` 中 QQ 频道的 `wsUrl` 为 `ws://127.0.0.1:6199/onebot`
 - 重新运行配置脚本：`./setup-openclaw.sh`
 - 重启 OpenClaw：`systemctl restart openclaw`
+
+### OpenClaw 报错 `unknown channel id: wechat`
+- ClawPanel v4.2.0 已修复此问题。微信通道由 ClawPanel 内部管理，不写入 `openclaw.json`
+- 如果升级后仍有此错误，重启容器即可自动清理：`docker compose restart openclaw-qq`
+- 或手动删除 `openclaw.json` 中的 `channels.wechat` 字段
+
+### OpenClaw 报错 `Unrecognized keys: "tools", "session"`
+- ClawPanel v4.2.0 已修复此问题。GET/PUT 配置接口自动过滤 OpenClaw 不支持的顶层键
+- 如果升级后仍有此错误，手动删除 `openclaw.json` 中的 `tools` 和 `session` 顶层字段
+
+### 关闭通道后仍能收到消息
+- 确保使用 ClawPanel v4.2.0+，通道开关会自动重启 OpenClaw 网关
+- 关闭 QQ 通道会同时退出 QQ 登录，重新开启需扫码登录

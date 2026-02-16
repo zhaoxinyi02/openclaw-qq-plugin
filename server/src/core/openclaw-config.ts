@@ -35,13 +35,14 @@ export class OpenClawConfig {
 
     let changed = false;
 
-    // Ensure plugins section exists and QQ plugin is enabled
+    // Ensure plugins section exists — only create QQ entry if it doesn't exist at all
+    // (Do NOT override enabled:false — user may have intentionally disabled it)
     if (!config.plugins) config.plugins = {};
     if (!config.plugins.entries) config.plugins.entries = {};
-    if (!config.plugins.entries.qq || !config.plugins.entries.qq.enabled) {
+    if (!config.plugins.entries.qq) {
       config.plugins.entries.qq = { enabled: true };
       changed = true;
-      console.log('[OpenClaw] Enabled QQ plugin');
+      console.log('[OpenClaw] Created QQ plugin entry');
     }
 
     // Ensure channels section exists and QQ channel is configured
@@ -124,7 +125,12 @@ export class OpenClawConfig {
     };
   }
 
+  // Channels managed externally by ClawPanel (not by OpenClaw gateway)
+  // Writing these into openclaw.json causes "unknown channel id" errors
+  private static EXTERNAL_CHANNELS = new Set(['wechat']);
+
   updateChannel(id: string, data: any) {
+    if (OpenClawConfig.EXTERNAL_CHANNELS.has(id)) return; // skip non-OpenClaw channels
     const config = this.read();
     if (!config) return;
     if (!config.channels) config.channels = {};
@@ -133,11 +139,24 @@ export class OpenClawConfig {
   }
 
   updatePlugin(id: string, data: any) {
+    if (OpenClawConfig.EXTERNAL_CHANNELS.has(id)) return; // skip non-OpenClaw plugins
     const config = this.read();
     if (!config) return;
     if (!config.plugins) config.plugins = {};
     if (!config.plugins.entries) config.plugins.entries = {};
     config.plugins.entries[id] = { ...config.plugins.entries[id], ...data };
     this.write(config);
+  }
+
+  // Remove any externally-managed channel entries that may have been written previously
+  cleanExternalChannels() {
+    const config = this.read();
+    if (!config) return;
+    let changed = false;
+    for (const ch of OpenClawConfig.EXTERNAL_CHANNELS) {
+      if (config.channels?.[ch]) { delete config.channels[ch]; changed = true; }
+      if (config.plugins?.entries?.[ch]) { delete config.plugins.entries[ch]; changed = true; }
+    }
+    if (changed) this.write(config);
   }
 }

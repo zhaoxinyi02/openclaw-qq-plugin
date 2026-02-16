@@ -52,15 +52,9 @@ export default function CronJobs() {
     const updated = jobs.map(j => j.id === id ? { ...j, enabled: !j.enabled } : j);
     setJobs(updated);
     try {
-      const r = await api.getOpenClawConfig();
-      if (r.ok) {
-        const config = r.config || {};
-        if (!config.cron) config.cron = {};
-        config.cron.jobs = updated;
-        await api.updateOpenClawConfig(config);
-        setMsg(`${job.name} 已${!job.enabled ? '启用' : '暂停'}`);
-        setTimeout(() => setMsg(''), 2000);
-      }
+      await api.updateCronJobs(updated);
+      setMsg(`${job.name} 已${!job.enabled ? '启用' : '暂停'}`);
+      setTimeout(() => setMsg(''), 2000);
     } catch {
       setJobs(jobs);
       setMsg('操作失败');
@@ -73,15 +67,9 @@ export default function CronJobs() {
     const updated = jobs.filter(j => j.id !== id);
     setJobs(updated);
     try {
-      const r = await api.getOpenClawConfig();
-      if (r.ok) {
-        const config = r.config || {};
-        if (!config.cron) config.cron = {};
-        config.cron.jobs = updated;
-        await api.updateOpenClawConfig(config);
-        setMsg('已删除');
-        setTimeout(() => setMsg(''), 2000);
-      }
+      await api.updateCronJobs(updated);
+      setMsg('已删除');
+      setTimeout(() => setMsg(''), 2000);
     } catch {
       loadJobs();
       setMsg('删除失败');
@@ -109,18 +97,12 @@ export default function CronJobs() {
     const updated = [...jobs, job];
     setJobs(updated);
     try {
-      const r = await api.getOpenClawConfig();
-      if (r.ok) {
-        const config = r.config || {};
-        if (!config.cron) config.cron = {};
-        config.cron.jobs = updated;
-        await api.updateOpenClawConfig(config);
-        setMsg('创建成功');
-        setShowCreate(false);
-        setNewName('');
-        setNewMessage('');
-        setTimeout(() => setMsg(''), 2000);
-      }
+      await api.updateCronJobs(updated);
+      setMsg('创建成功');
+      setShowCreate(false);
+      setNewName('');
+      setNewMessage('');
+      setTimeout(() => setMsg(''), 2000);
     } catch {
       loadJobs();
       setMsg('创建失败');

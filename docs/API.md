@@ -202,6 +202,36 @@ Authorization: Bearer <token>
 ### PUT `/api/openclaw/plugins/:id`
 更新指定插件配置（技能中心启用/禁用）。
 
+### POST `/api/openclaw/toggle-channel`
+切换通道启用/禁用（v4.2.0+）。自动处理配置更新、系统日志、QQ 退出登录、网关重启。
+
+**请求体：**
+```json
+{ "channelId": "qq", "enabled": false }
+```
+
+**响应：**
+```json
+{ "ok": true, "message": "QQ (NapCat) 通道已禁用" }
+```
+
+### POST `/api/napcat/logout`
+退出 QQ 登录（v4.2.0+）。清除 QQ 会话数据并重启容器。
+
+**响应：**
+```json
+{ "ok": true, "message": "QQ 已退出登录，容器正在重启..." }
+```
+
+### GET `/api/napcat/login-info`
+获取当前 QQ 登录信息。
+
+### POST `/api/system/restart-gateway`
+请求宿主机重启 OpenClaw 网关（通过信号文件机制）。
+
+### GET `/api/system/restart-gateway-status`
+获取网关重启状态。
+
 ## 管理配置
 
 ### GET `/api/admin/config`

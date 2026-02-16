@@ -10,7 +10,7 @@
 
 [![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-red?style=flat-square)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen?style=flat-square&logo=docker&logoColor=white)](docker-compose.yml)
-[![Version](https://img.shields.io/badge/version-4.1.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
+[![Version](https://img.shields.io/badge/version-4.2.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
 [![GitHub Stars](https://img.shields.io/github/stars/zhaoxinyi02/ClawPanel?style=flat-square&logo=github)](https://github.com/zhaoxinyi02/ClawPanel/stargazers)
 
 [快速开始](#-快速开始) · [功能特性](#-主要功能) · [效果预览](#-效果预览) · [API 文档](docs/API.md) · [部署指南](docs/DEPLOYMENT.md)
@@ -275,6 +275,22 @@ git pull && docker compose up -d --build
 </details>
 
 ## 📋 更新日志
+
+### v4.2.0 — 通道管理增强 & Bug 修复 (2026-02-16)
+- 🔧 **QQ 登录修复**：扫码登录、快速登录、账密登录按钮全部可用，二维码正常显示
+- 🔧 **通道开关修复**：关闭通道后 OpenClaw 网关自动重启，配置即时生效
+- 🔧 **QQ 退出登录**：关闭 QQ 通道时自动退出 QQ 登录（清除会话数据），重新开启需扫码
+- 🔧 **WeChat 配置兼容**：修复 `channels.wechat: unknown channel id` 错误（#9），微信配置不再写入 openclaw.json
+- 🔧 **tools/session 兼容**：修复 OpenClaw 2026.2.14+ 不支持 tools/session 顶层键导致的配置报错（#10）
+- 🔧 **通知开关**：QQ 通道配置中新增防撤回、成员变动、管理员变动、禁言、戳一戳、荣誉等通知开关
+- 🆕 **活跃通道状态**：仪表盘和侧边栏根据通道启用状态 + 连接状态动态显示，关闭的通道不再显示为活跃
+- 🆕 **活动日志增强**：通道开启/关闭、QQ 登录/退出、网关重启等操作自动记录系统日志
+- 🆕 **QQ 未登录状态**：QQ 通道启用但未登录时显示占位信息和登录按钮
+- 🆕 **退出登录按钮**：QQ 通道新增「退出登录」按钮，一键退出 QQ 账号
+- 🆕 **环境检测增强**：准确检测宿主机 OS 版本、Docker/Git/Bun 版本
+- 🆕 **一键更新**：版本管理支持一键更新 OpenClaw，显示更新进度
+- 🔧 **定时任务修复**：修复定时任务无法删除的问题
+- 🔧 **autoSetup 修复**：容器重启不再覆盖用户手动禁用的 QQ 通道配置
 
 ### v4.1.0 — 全面功能扩展 (2026-02-14)
 - 🆕 **通道管理**：新增 20+ 通道支持（飞书/钉钉/企业微信/QQ官方Bot/IRC/Teams/LINE/Matrix/Twitch 等）

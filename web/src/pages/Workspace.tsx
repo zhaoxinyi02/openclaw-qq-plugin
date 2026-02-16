@@ -53,6 +53,47 @@ function canPreview(ext: string) {
   return PREVIEWABLE_IMG.includes(ext) || PREVIEWABLE_TXT.includes(ext);
 }
 
+function simpleMarkdown(md: string): string {
+  let html = md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // Headers
+    .replace(/^######\s+(.+)$/gm, '<h6>$1</h6>')
+    .replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>')
+    .replace(/^####\s+(.+)$/gm, '<h4>$1</h4>')
+    .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+    .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+    // Bold & italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs">$1</code>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="text-indigo-600 hover:underline">$1</a>')
+    // Horizontal rule
+    .replace(/^---+$/gm, '<hr class="my-4 border-gray-200 dark:border-gray-700" />')
+    // Unordered list items
+    .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
+    // Ordered list items
+    .replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>')
+    // Blockquote
+    .replace(/^&gt;\s+(.+)$/gm, '<blockquote class="border-l-4 border-gray-300 dark:border-gray-600 pl-3 text-gray-600 dark:text-gray-400 italic">$1</blockquote>');
+  // Wrap consecutive <li> in <ul>
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul class="list-disc pl-5 space-y-1">$1</ul>');
+  // Paragraphs: wrap lines that aren't already HTML tags
+  html = html.split('\n').map(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return '';
+    if (/^<(h[1-6]|ul|ol|li|blockquote|hr|pre|code|div|table)/.test(trimmed)) return line;
+    return '<p>' + line + '</p>';
+  }).join('\n');
+  // Code blocks (```...```)
+  html = html.replace(/<p>```(\w*)<\/p>\n([\s\S]*?)\n<p>```<\/p>/g,
+    '<pre class="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 text-xs font-mono overflow-x-auto my-2"><code>$2</code></pre>');
+  return html;
+}
+
 export default function Workspace() {
   const [files, setFiles] = useState<WsFile[]>([]);
   const [curPath, setCurPath] = useState('');
@@ -72,6 +113,7 @@ export default function Workspace() {
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [preview, setPreview] = useState<{ path: string; type: 'image' | 'text'; content?: string } | null>(null);
+  const [mdRender, setMdRender] = useState(true);
   const fRef = useRef<HTMLInputElement>(null);
 
   const flash = (t: string, ok = true) => { setToast({ t, ok }); setTimeout(() => setToast(null), 3000); };
@@ -177,6 +219,7 @@ export default function Workspace() {
         const r = await api.workspacePreview(f.path);
         if (r.ok && r.type === 'text') {
           setPreview({ path: f.path, type: 'text', content: r.content });
+          setMdRender(ext === '.md');
         } else {
           flash(r.error || '无法预览', false);
         }
@@ -302,6 +345,18 @@ export default function Workspace() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
               <span className="text-sm font-medium truncate">{preview.path.split('/').pop()}</span>
               <div className="flex items-center gap-2">
+                {preview.type === 'text' && preview.path.endsWith('.md') && (
+                  <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <button onClick={() => setMdRender(true)}
+                      className={`px-2.5 py-1 text-xs ${mdRender ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                      <Eye size={12} className="inline mr-1" />渲染
+                    </button>
+                    <button onClick={() => setMdRender(false)}
+                      className={`px-2.5 py-1 text-xs ${!mdRender ? 'bg-indigo-600 text-white' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}>
+                      <FileCode size={12} className="inline mr-1" />源码
+                    </button>
+                  </div>
+                )}
                 <a href={api.workspaceDownloadUrl(preview.path)} className="text-xs text-indigo-600 hover:underline">下载</a>
                 <button onClick={() => setPreview(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"><X size={16} /></button>
               </div>
@@ -309,6 +364,8 @@ export default function Workspace() {
             <div className="flex-1 overflow-auto p-4">
               {preview.type === 'image' ? (
                 <img src={api.workspacePreviewUrl(preview.path)} alt={preview.path} className="max-w-full mx-auto rounded" />
+              ) : preview.path.endsWith('.md') && mdRender ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: simpleMarkdown(preview.content || '') }} />
               ) : (
                 <pre className="text-xs font-mono whitespace-pre-wrap break-all text-gray-700 dark:text-gray-300">{preview.content}</pre>
               )}

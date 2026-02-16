@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api';
-import { Radio, Wifi, WifiOff, QrCode, Key, Zap, UserCheck, Check, X } from 'lucide-react';
+import { Radio, Wifi, WifiOff, QrCode, Key, Zap, UserCheck, Check, X, Power, Loader2, RefreshCw, LogOut } from 'lucide-react';
 
 type ChannelDef = {
   id: string; label: string; description: string; type: 'builtin' | 'plugin';
@@ -13,13 +13,23 @@ const CHANNEL_DEFS: ChannelDef[] = [
     loginMethods: ['qrcode', 'quick', 'password'],
     configFields: [
       { key: 'wsUrl', label: 'WebSocket 地址', type: 'text', placeholder: 'ws://127.0.0.1:3001' },
+      { key: 'accessToken', label: 'Access Token', type: 'password' },
+      { key: 'ownerQQ', label: '主人QQ号', type: 'number', help: '接收通知的QQ号' },
       { key: 'wakeProbability', label: '唤醒概率 (%)', type: 'number', help: '群聊中Bot回复的概率，0-100' },
       { key: 'minSendIntervalMs', label: '最小发送间隔 (ms)', type: 'number' },
       { key: 'wakeTrigger', label: '唤醒触发词', type: 'text', help: '逗号分隔' },
-      { key: 'pokeReply', label: '戳一戳回复', type: 'toggle' },
-      { key: 'pokeReplyText', label: '戳一戳回复内容', type: 'text', placeholder: '别戳我啦~' },
+      { key: 'pokeReplyText', label: '戳一戳回复内容', type: 'text', placeholder: '别戳我啦~', help: '自定义戳一戳回复文本' },
       { key: 'autoApproveGroup', label: '自动同意加群', type: 'toggle' },
       { key: 'autoApproveFriend', label: '自动同意好友', type: 'toggle' },
+      { key: 'notifications.antiRecall', label: '防撤回通知', type: 'toggle', help: '撤回消息时发送通知' },
+      { key: 'notifications.memberChange', label: '成员变动通知', type: 'toggle', help: '群成员加入/退出通知' },
+      { key: 'notifications.adminChange', label: '管理员变动通知', type: 'toggle', help: '管理员设置/取消通知' },
+      { key: 'notifications.banNotice', label: '禁言通知', type: 'toggle', help: '禁言/解禁通知' },
+      { key: 'notifications.pokeReply', label: '戳一戳回复', type: 'toggle', help: '收到戳一戳时自动回复' },
+      { key: 'notifications.honorNotice', label: '荣誉通知', type: 'toggle', help: '群荣誉变动通知' },
+      { key: 'notifications.fileUpload', label: '文件上传通知', type: 'toggle', help: '群文件上传通知' },
+      { key: 'welcome.enabled', label: '入群欢迎', type: 'toggle', help: '新成员入群时发送欢迎消息' },
+      { key: 'welcome.template', label: '欢迎模板', type: 'text', placeholder: '欢迎 {nickname} 加入本群！' },
     ] },
   { id: 'wechat', label: '微信', description: '微信个人号 (wechatbot-webhook)', type: 'builtin',
     loginMethods: ['qrcode'],
@@ -118,54 +128,222 @@ const CHANNEL_DEFS: ChannelDef[] = [
     ] },
 ];
 
+// Determine channel status: 'enabled' (green), 'configured' (red/orange), 'unconfigured' (gray)
+function getChannelStatus(ch: ChannelDef, ocConfig: any): 'enabled' | 'configured' | 'unconfigured' {
+  const chConf = ocConfig?.channels?.[ch.id] || {};
+  const pluginConf = ocConfig?.plugins?.entries?.[ch.id] || {};
+  const isEnabled = chConf.enabled || pluginConf.enabled;
+  // Check if any config field has a value
+  const hasConfig = ch.configFields.some(f => {
+    const v = chConf[f.key];
+    return v !== undefined && v !== null && v !== '';
+  });
+  if (isEnabled) return 'enabled';
+  if (hasConfig) return 'configured';
+  return 'unconfigured';
+}
+
+function statusDot(s: 'enabled' | 'configured' | 'unconfigured') {
+  if (s === 'enabled') return 'bg-emerald-500';
+  if (s === 'configured') return 'bg-red-400';
+  return 'bg-gray-300 dark:bg-gray-600';
+}
+
+function statusLabel(s: 'enabled' | 'configured' | 'unconfigured') {
+  if (s === 'enabled') return '已启用';
+  if (s === 'configured') return '已配置未启用';
+  return '未配置';
+}
+
 export default function Channels() {
   const [status, setStatus] = useState<any>(null);
   const [selectedChannel, setSelectedChannel] = useState('qq');
-  const [configs, setConfigs] = useState<Record<string, any>>({});
   const [ocConfig, setOcConfig] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [requests, setRequests] = useState<any[]>([]);
+  // QQ Login state
+  const [loginModal, setLoginModal] = useState<'qrcode' | 'quick' | 'password' | null>(null);
+  const [qrImg, setQrImg] = useState('');
+  const [qrLoading, setQrLoading] = useState(false);
+  const [quickList, setQuickList] = useState<string[]>([]);
+  const [loginUin, setLoginUin] = useState('');
+  const [loginPwd, setLoginPwd] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginMsg, setLoginMsg] = useState('');
 
-  useEffect(() => {
+  const reload = () => {
     api.getStatus().then(r => { if (r.ok) setStatus(r); });
-    api.getAdminConfig().then(r => { if (r.ok) setConfigs(r.config || {}); });
     api.getOpenClawConfig().then(r => { if (r.ok) setOcConfig(r.config || {}); });
     api.getRequests().then(r => { if (r.ok) setRequests(r.requests || []); });
-  }, []);
+  };
 
-  // Build connected channels from status
-  const connected: { id: string; label: string }[] = [];
-  if (status?.napcat?.connected) connected.push({ id: 'qq', label: `QQ: ${status.napcat.nickname || ''}` });
-  if (status?.wechat?.loggedIn) connected.push({ id: 'wechat', label: `微信: ${status.wechat.name || ''}` });
+  useEffect(() => { reload(); }, []);
+
   const ocChannels = ocConfig?.channels || {};
   const ocPlugins = ocConfig?.plugins?.entries || {};
-  for (const ch of CHANNEL_DEFS) {
-    if (ch.id === 'qq' || ch.id === 'wechat') continue;
-    if (ocChannels[ch.id]?.enabled || ocPlugins[ch.id]?.enabled) {
-      if (!connected.find(c => c.id === ch.id)) connected.push({ id: ch.id, label: `${ch.label}: 已启用` });
-    }
-  }
+
+  // Get the merged config for the current channel (supports nested keys like notifications.antiRecall)
+  const getFieldValue = (channelId: string, key: string) => {
+    const chConf = ocChannels[channelId] || {};
+    return key.split('.').reduce((o: any, k: string) => o?.[k], chConf);
+  };
+
+  const isChannelEnabled = (channelId: string) => {
+    return ocChannels[channelId]?.enabled || ocPlugins[channelId]?.enabled || false;
+  };
 
   const currentDef = CHANNEL_DEFS.find(c => c.id === selectedChannel);
+
+  const handleToggleEnabled = async (channelId: string) => {
+    const newEnabled = !isChannelEnabled(channelId);
+    try {
+      const r = await api.toggleChannel(channelId, newEnabled);
+      if (r.ok) {
+        setMsg(r.message || (newEnabled ? '通道已启用' : '通道已禁用'));
+        if (channelId === 'qq' && !newEnabled) {
+          setMsg('QQ 通道已关闭，正在退出登录并重启网关...');
+        }
+      } else {
+        setMsg(r.error || '操作失败');
+      }
+      reload();
+      setTimeout(() => setMsg(''), 5000);
+    } catch (err) { setMsg('操作失败: ' + String(err)); setTimeout(() => setMsg(''), 3000); }
+  };
 
   const handleSave = async () => {
     if (!currentDef) return;
     setSaving(true); setMsg('');
     try {
-      await api.updateAdminConfig(configs);
-      if (currentDef.type === 'plugin' || !['qq'].includes(currentDef.id)) {
-        const chData = { ...(ocChannels[currentDef.id] || {}), enabled: true };
-        for (const f of currentDef.configFields) {
-          if (configs[currentDef.id]?.[f.key] !== undefined) chData[f.key] = configs[currentDef.id][f.key];
+      // Collect values from form inputs
+      const formEl = document.getElementById('channel-config-form') as HTMLFormElement;
+      if (!formEl) return;
+      const formData = new FormData(formEl);
+      const chData: any = JSON.parse(JSON.stringify(ocChannels[currentDef.id] || {}));
+      for (const f of currentDef.configFields) {
+        if (f.type === 'toggle') continue; // toggles handled separately via handleToggleField
+        const val = formData.get(f.key);
+        if (val !== null && val !== '') {
+          const parsed = f.type === 'number' ? Number(val) : val;
+          // Support nested keys like welcome.template
+          const keys = f.key.split('.');
+          if (keys.length === 1) {
+            chData[f.key] = parsed;
+          } else {
+            let cur = chData;
+            for (let i = 0; i < keys.length - 1; i++) { if (!cur[keys[i]]) cur[keys[i]] = {}; cur = cur[keys[i]]; }
+            cur[keys[keys.length - 1]] = parsed;
+          }
         }
-        await api.updateChannel(currentDef.id, chData);
-        if (currentDef.type === 'plugin') await api.updatePlugin(currentDef.id, { enabled: true });
       }
+      await api.updateChannel(currentDef.id, chData);
+      if (currentDef.type === 'plugin') await api.updatePlugin(currentDef.id, { enabled: chData.enabled || false });
       setMsg('保存成功');
+      reload();
       setTimeout(() => setMsg(''), 2000);
     } catch (err) { setMsg('保存失败: ' + String(err)); }
     finally { setSaving(false); }
+  };
+
+  const handleToggleField = async (channelId: string, key: string) => {
+    const chConf = JSON.parse(JSON.stringify(ocChannels[channelId] || {}));
+    const keys = key.split('.');
+    if (keys.length === 1) {
+      chConf[key] = !chConf[key];
+    } else {
+      let cur = chConf;
+      for (let i = 0; i < keys.length - 1; i++) { if (!cur[keys[i]]) cur[keys[i]] = {}; cur = cur[keys[i]]; }
+      cur[keys[keys.length - 1]] = !cur[keys[keys.length - 1]];
+    }
+    try {
+      await api.updateChannel(channelId, chConf);
+      reload();
+    } catch {}
+  };
+
+  // === QQ Login handlers ===
+  const handleQRLogin = async () => {
+    setLoginModal('qrcode'); setQrImg(''); setQrLoading(true); setLoginMsg('');
+    try {
+      const r = await api.napcatGetQRCode();
+      if (r.ok && r.data?.qrcode) {
+        setQrImg(r.data.qrcode);
+      } else if (r.message?.includes('Logined') || r.data?.message?.includes('Logined')) {
+        setLoginMsg('QQ 已登录，无需重复登录');
+      } else {
+        setLoginMsg(r.message || r.data?.message || r.error || '获取二维码失败');
+      }
+    } catch (err) { setLoginMsg('获取二维码失败: ' + String(err)); }
+    finally { setQrLoading(false); }
+  };
+
+  const handleRefreshQR = async () => {
+    setQrLoading(true); setLoginMsg('');
+    try {
+      const r = await api.napcatRefreshQRCode();
+      if (r.ok && r.data?.qrcode) {
+        setQrImg(r.data.qrcode);
+      } else {
+        setLoginMsg(r.data?.message || '刷新失败');
+      }
+    } catch { setLoginMsg('刷新失败'); }
+    finally { setQrLoading(false); }
+  };
+
+  const handleQuickLoginOpen = async () => {
+    setLoginModal('quick'); setQuickList([]); setLoginLoading(true); setLoginMsg('');
+    try {
+      const r = await api.napcatQuickLoginList();
+      if (r.ok && r.data) {
+        const list = Array.isArray(r.data) ? r.data : (r.data.QuickLoginList || r.data.quickLoginList || []);
+        setQuickList(list.map((item: any) => typeof item === 'string' ? item : item.uin || String(item)));
+        if (list.length === 0 && (r.message?.includes('Logined') || r.data?.message?.includes('Logined'))) {
+          setLoginMsg('QQ 已登录，无需重复登录');
+        }
+      } else { setLoginMsg(r.message || r.error || '获取快速登录列表失败'); }
+    } catch (err) { setLoginMsg('获取快速登录列表失败: ' + String(err)); }
+    finally { setLoginLoading(false); }
+  };
+
+  const handleQuickLogin = async (uin: string) => {
+    setLoginLoading(true); setLoginMsg('');
+    try {
+      const r = await api.napcatQuickLogin(uin);
+      if (r.ok && (r.code === 0 || r.message?.includes('Logined'))) { setLoginMsg('登录成功！'); reload(); setTimeout(() => setLoginModal(null), 1500); }
+      else { setLoginMsg(r.message || r.data?.message || r.error || '快速登录失败'); }
+    } catch (err) { setLoginMsg('快速登录失败: ' + String(err)); }
+    finally { setLoginLoading(false); }
+  };
+
+  const handlePasswordLoginOpen = () => {
+    setLoginModal('password'); setLoginUin(''); setLoginPwd(''); setLoginMsg('');
+  };
+
+  const handlePasswordLogin = async () => {
+    if (!loginUin || !loginPwd) { setLoginMsg('请输入QQ号和密码'); return; }
+    setLoginLoading(true); setLoginMsg('');
+    try {
+      const r = await api.napcatPasswordLogin(loginUin, loginPwd);
+      if (r.ok && (r.code === 0 || r.message?.includes('Logined'))) { setLoginMsg('登录成功！'); reload(); setTimeout(() => setLoginModal(null), 1500); }
+      else { setLoginMsg(r.message || r.data?.message || r.error || '账密登录失败'); }
+    } catch (err) { setLoginMsg('账密登录失败: ' + String(err)); }
+    finally { setLoginLoading(false); }
+  };
+
+  const handleQQLogout = async () => {
+    if (!confirm('确定要退出当前QQ登录？退出后需要重新扫码或快速登录。')) return;
+    setLoginLoading(true); setLoginMsg('');
+    try {
+      const r = await api.napcatLogout();
+      if (r.ok) {
+        setMsg('QQ 已退出登录，容器正在重启...');
+        setTimeout(() => { reload(); setMsg(''); }, 5000);
+      } else {
+        setMsg(r.error || '退出登录失败');
+      }
+    } catch (err) { setMsg('退出登录失败: ' + String(err)); }
+    finally { setLoginLoading(false); setTimeout(() => setMsg(''), 5000); }
   };
 
   const handleApprove = async (flag: string) => {
@@ -177,34 +355,26 @@ export default function Channels() {
     setRequests(prev => prev.filter(r => r.flag !== flag));
   };
 
-  const updateField = (channelId: string, key: string, value: any) => {
-    setConfigs(prev => ({
-      ...prev,
-      [channelId]: { ...(prev[channelId] || {}), [key]: value },
-    }));
-  };
+  // Sort channels: enabled first, then configured, then unconfigured
+  const sortedBuiltin = CHANNEL_DEFS.filter(c => c.type === 'builtin').sort((a, b) => {
+    const order = { enabled: 0, configured: 1, unconfigured: 2 };
+    return order[getChannelStatus(a, ocConfig)] - order[getChannelStatus(b, ocConfig)];
+  });
+  const sortedPlugin = CHANNEL_DEFS.filter(c => c.type === 'plugin').sort((a, b) => {
+    const order = { enabled: 0, configured: 1, unconfigured: 2 };
+    return order[getChannelStatus(a, ocConfig)] - order[getChannelStatus(b, ocConfig)];
+  });
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-lg font-bold">通道管理</h2>
-        <p className="text-xs text-gray-500 mt-0.5">配置和管理所有消息通道</p>
+        <p className="text-xs text-gray-500 mt-0.5">配置和管理所有消息通道 — <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />已启用</span> <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />已配置未启用</span> <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />未配置</span></p>
       </div>
 
-      {/* Connected channels — only show connected */}
-      {connected.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {connected.map(ch => (
-            <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs border transition-colors ${
-                selectedChannel === ch.id
-                  ? 'border-violet-300 dark:border-violet-700 bg-violet-50 dark:bg-violet-950/50'
-                  : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}>
-              <Wifi size={14} className="text-emerald-500" />
-              <span>{ch.label}</span>
-            </button>
-          ))}
+      {msg && (
+        <div className={`px-3 py-2 rounded-lg text-xs ${msg.includes('失败') ? 'bg-red-50 dark:bg-red-950 text-red-600' : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600'}`}>
+          {msg}
         </div>
       )}
 
@@ -212,31 +382,37 @@ export default function Channels() {
         {/* Channel selector */}
         <div className="card p-3 space-y-1 max-h-[70vh] overflow-y-auto">
           <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1">内置通道</h3>
-          {CHANNEL_DEFS.filter(c => c.type === 'builtin').map(ch => (
-            <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                selectedChannel === ch.id
-                  ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}>
-              <Radio size={14} />
-              <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{ch.label}</div></div>
-              {connected.find(c => c.id === ch.id) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
-            </button>
-          ))}
+          {sortedBuiltin.map(ch => {
+            const st = getChannelStatus(ch, ocConfig);
+            return (
+              <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                  selectedChannel === ch.id
+                    ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}>
+                <Radio size={14} />
+                <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{ch.label}</div></div>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot(st)}`} title={statusLabel(st)} />
+              </button>
+            );
+          })}
           <h3 className="text-xs font-semibold text-gray-500 mt-3 mb-2 px-1">插件通道</h3>
-          {CHANNEL_DEFS.filter(c => c.type === 'plugin').map(ch => (
-            <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                selectedChannel === ch.id
-                  ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}>
-              <Radio size={14} />
-              <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{ch.label}</div></div>
-              {connected.find(c => c.id === ch.id) && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />}
-            </button>
-          ))}
+          {sortedPlugin.map(ch => {
+            const st = getChannelStatus(ch, ocConfig);
+            return (
+              <button key={ch.id} onClick={() => setSelectedChannel(ch.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-sm transition-colors ${
+                  selectedChannel === ch.id
+                    ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}>
+                <Radio size={14} />
+                <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{ch.label}</div></div>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot(st)}`} title={statusLabel(st)} />
+              </button>
+            );
+          })}
         </div>
 
         {/* Channel config */}
@@ -244,56 +420,89 @@ export default function Channels() {
           {currentDef && (
             <div className="card p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-sm">{currentDef.label} 配置</h3>
-                  <p className="text-[11px] text-gray-500 mt-0.5">{currentDef.description}</p>
-                </div>
-                {currentDef.loginMethods && currentDef.loginMethods.length > 0 && (
-                  <div className="flex gap-1.5">
-                    {currentDef.loginMethods.includes('qrcode') && (
-                      <button className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900">
-                        <QrCode size={12} />扫码登录
-                      </button>
-                    )}
-                    {currentDef.loginMethods.includes('quick') && (
-                      <button className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900">
-                        <Zap size={12} />快速登录
-                      </button>
-                    )}
-                    {currentDef.loginMethods.includes('password') && (
-                      <button className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900">
-                        <Key size={12} />账密登录
-                      </button>
-                    )}
+                <div className="flex items-center gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm">{currentDef.label} 配置</h3>
+                      <span className={`w-2 h-2 rounded-full ${statusDot(getChannelStatus(currentDef, ocConfig))}`} />
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        getChannelStatus(currentDef, ocConfig) === 'enabled' ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600' :
+                        getChannelStatus(currentDef, ocConfig) === 'configured' ? 'bg-red-50 dark:bg-red-950 text-red-500' :
+                        'bg-gray-100 dark:bg-gray-800 text-gray-500'
+                      }`}>{statusLabel(getChannelStatus(currentDef, ocConfig))}</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{currentDef.description}</p>
                   </div>
-                )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Enable/Disable toggle switch */}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleToggleEnabled(currentDef.id)}
+                      className={`relative w-10 h-5 rounded-full transition-colors ${isChannelEnabled(currentDef.id) ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${isChannelEnabled(currentDef.id) ? 'translate-x-5' : ''}`} />
+                    </button>
+                    <span className={`text-[11px] font-medium ${isChannelEnabled(currentDef.id) ? 'text-emerald-600' : 'text-gray-500'}`}>
+                      {isChannelEnabled(currentDef.id) ? '已启用' : '未启用'}
+                    </span>
+                  </div>
+                  {currentDef.loginMethods && currentDef.loginMethods.length > 0 && (
+                    <>
+                      {currentDef.loginMethods.includes('qrcode') && (
+                        <button onClick={handleQRLogin} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900">
+                          <QrCode size={12} />扫码登录
+                        </button>
+                      )}
+                      {currentDef.loginMethods.includes('quick') && (
+                        <button onClick={handleQuickLoginOpen} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900">
+                          <Zap size={12} />快速登录
+                        </button>
+                      )}
+                      {currentDef.loginMethods.includes('password') && (
+                        <button onClick={handlePasswordLoginOpen} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900">
+                          <Key size={12} />账密登录
+                        </button>
+                      )}
+                      {currentDef.id === 'qq' && (
+                        <button onClick={handleQQLogout} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-lg bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900">
+                          <LogOut size={12} />退出登录
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {currentDef.configFields.map(field => (
-                  <div key={field.key}>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {field.label}
-                      {field.help && <span className="text-gray-400 font-normal ml-1">— {field.help}</span>}
-                    </label>
-                    {field.type === 'toggle' ? (
-                      <button
-                        onClick={() => updateField(currentDef.id, field.key, !configs[currentDef.id]?.[field.key])}
-                        className={`relative w-10 h-5 rounded-full transition-colors ${configs[currentDef.id]?.[field.key] ? 'bg-violet-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${configs[currentDef.id]?.[field.key] ? 'translate-x-5' : ''}`} />
-                      </button>
-                    ) : (
-                      <input
-                        type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
-                        value={configs[currentDef.id]?.[field.key] || ''}
-                        onChange={e => updateField(currentDef.id, field.key, field.type === 'number' ? Number(e.target.value) : e.target.value)}
-                        placeholder={field.placeholder}
-                        className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
+              <form id="channel-config-form" className="space-y-3" onSubmit={e => { e.preventDefault(); handleSave(); }}>
+                {currentDef.configFields.map(field => {
+                  const currentVal = getFieldValue(currentDef.id, field.key);
+                  return (
+                    <div key={field.key}>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        {field.label}
+                        {field.help && <span className="text-gray-400 font-normal ml-1">— {field.help}</span>}
+                        {currentVal !== undefined && currentVal !== null && currentVal !== '' && field.type !== 'toggle' && (
+                          <span className="text-emerald-500 font-normal ml-1.5 text-[10px]">● 已配置</span>
+                        )}
+                      </label>
+                      {field.type === 'toggle' ? (
+                        <button type="button"
+                          onClick={() => handleToggleField(currentDef.id, field.key)}
+                          className={`relative w-10 h-5 rounded-full transition-colors ${currentVal ? 'bg-violet-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                          <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${currentVal ? 'translate-x-5' : ''}`} />
+                        </button>
+                      ) : (
+                        <input
+                          name={field.key}
+                          type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
+                          defaultValue={currentVal ?? ''}
+                          placeholder={field.placeholder || (currentVal === undefined ? '未配置' : '')}
+                          className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </form>
 
               {currentDef.configFields.length === 0 && (
                 <p className="text-xs text-gray-400 py-4 text-center">此通道无需额外配置</p>
@@ -304,7 +513,6 @@ export default function Channels() {
                   className="px-4 py-2 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
                   {saving ? '保存中...' : '保存配置'}
                 </button>
-                {msg && <span className={`text-xs ${msg.includes('失败') ? 'text-red-500' : 'text-emerald-500'}`}>{msg}</span>}
               </div>
             </div>
           )}
@@ -334,6 +542,96 @@ export default function Channels() {
           )}
         </div>
       </div>
+
+      {/* QQ Login Modal */}
+      {loginModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setLoginModal(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-xl max-w-md w-full overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">
+                {loginModal === 'qrcode' && 'QQ 扫码登录'}
+                {loginModal === 'quick' && 'QQ 快速登录'}
+                {loginModal === 'password' && 'QQ 账密登录'}
+              </h3>
+              <button onClick={() => setLoginModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              {loginMsg && (
+                <div className={`px-3 py-2 rounded-lg text-xs ${loginMsg.includes('成功') ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600' : 'bg-red-50 dark:bg-red-950 text-red-600'}`}>
+                  {loginMsg}
+                </div>
+              )}
+
+              {/* QR Code Login */}
+              {loginModal === 'qrcode' && (
+                <div className="flex flex-col items-center gap-3">
+                  {qrLoading ? (
+                    <div className="w-48 h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <Loader2 size={24} className="animate-spin text-gray-400" />
+                    </div>
+                  ) : qrImg ? (
+                    <img src={qrImg.startsWith('data:') ? qrImg : `data:image/png;base64,${qrImg}`} alt="QR Code" className="w-48 h-48 rounded-lg border border-gray-200 dark:border-gray-700" />
+                  ) : (
+                    <div className="w-48 h-48 flex items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg text-xs text-gray-400">
+                      无法加载二维码
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">请使用手机QQ扫描二维码登录</p>
+                  <button onClick={handleRefreshQR} disabled={qrLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                    <RefreshCw size={12} className={qrLoading ? 'animate-spin' : ''} />刷新二维码
+                  </button>
+                </div>
+              )}
+
+              {/* Quick Login */}
+              {loginModal === 'quick' && (
+                <div className="space-y-2">
+                  {loginLoading ? (
+                    <div className="flex items-center justify-center py-8"><Loader2 size={20} className="animate-spin text-gray-400" /></div>
+                  ) : quickList.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-8">没有可用的快速登录账号，请先使用扫码或账密登录一次</p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-500">选择一个已登录过的QQ号快速登录：</p>
+                      {quickList.map(uin => (
+                        <button key={uin} onClick={() => handleQuickLogin(uin)}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-sm transition-colors">
+                          <Zap size={14} className="text-emerald-500" />
+                          <span className="font-mono">{uin}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Password Login */}
+              {loginModal === 'password' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">QQ号</label>
+                    <input type="text" value={loginUin} onChange={e => setLoginUin(e.target.value)}
+                      placeholder="输入QQ号" className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">密码</label>
+                    <input type="password" value={loginPwd} onChange={e => setLoginPwd(e.target.value)}
+                      placeholder="输入QQ密码" className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent" />
+                  </div>
+                  <button onClick={handlePasswordLogin} disabled={loginLoading || !loginUin || !loginPwd}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50">
+                    {loginLoading ? <Loader2 size={12} className="animate-spin" /> : <Key size={12} />}
+                    {loginLoading ? '登录中...' : '登录'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

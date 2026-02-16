@@ -27,6 +27,8 @@ async function main() {
   if (cfg.openclaw.autoSetup) {
     openclawConfig.autoSetup(cfg.napcat.wsUrl, cfg.napcat.accessToken, cfg.qq.ownerQQ);
   }
+  // Clean up any externally-managed channel entries (e.g. wechat) from openclaw.json
+  openclawConfig.cleanExternalChannels();
 
   // Create OneBot client (connects to NapCat in the same container)
   const onebotClient = new OneBotClient(cfg.napcat.wsUrl, cfg.napcat.accessToken);

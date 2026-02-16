@@ -16,6 +16,7 @@ export function useWebSocket() {
   const [logEntries, setLogEntries] = useState<LogEntry[]>([]);
   const [napcatStatus, setNapcatStatus] = useState<any>({ connected: false });
   const [wechatStatus, setWechatStatus] = useState<any>({ connected: false });
+  const [openclawStatus, setOpenclawStatus] = useState<any>({});
 
   // Fetch initial status and event log from API
   useEffect(() => {
@@ -23,6 +24,7 @@ export function useWebSocket() {
       api.getStatus().then(r => {
         if (r.ok && r.napcat) setNapcatStatus(r.napcat);
         if (r.ok && r.wechat) setWechatStatus(r.wechat);
+        if (r.ok && r.openclaw) setOpenclawStatus(r.openclaw);
       }).catch(() => {});
     };
     fetchStatus();
@@ -77,5 +79,5 @@ export function useWebSocket() {
     }).catch(() => {});
   }, []);
 
-  return { events, logEntries, napcatStatus, wechatStatus, clearEvents, refreshLog };
+  return { events, logEntries, napcatStatus, wechatStatus, openclawStatus, clearEvents, refreshLog };
 }

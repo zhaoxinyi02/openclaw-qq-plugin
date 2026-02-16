@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import {
   Save, RefreshCw, ChevronDown, ChevronRight,
   Brain, MessageSquare, Globe, Terminal, Webhook,
-  Users, Eye, Key, Plus, Trash2,
+  Users, Eye, EyeOff, Key, Plus, Trash2,
   Monitor, HardDrive, FileText, Archive, RotateCcw,
   CheckCircle, AlertTriangle, Package,
 } from 'lucide-react';
@@ -19,7 +19,7 @@ const KNOWN_PROVIDERS: { id: string; name: string; baseUrl: string; models: stri
   { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', models: ['anthropic/claude-sonnet-4-5', 'openai/gpt-4o'] },
 ];
 
-type ConfigTab = 'models' | 'identity' | 'general' | 'version' | 'env' | 'docs';
+type ConfigTab = 'models' | 'identity' | 'general' | 'version' | 'env';
 
 export default function SystemConfig() {
   const [config, setConfig] = useState<any>({});
@@ -36,6 +36,15 @@ export default function SystemConfig() {
   const [selectedDoc, setSelectedDoc] = useState<any>(null);
   const [docContent, setDocContent] = useState('');
   const [docSaving, setDocSaving] = useState(false);
+  const [identityDocs, setIdentityDocs] = useState<any[]>([]);
+  const [selectedIdentityDoc, setSelectedIdentityDoc] = useState<any>(null);
+  const [identityContent, setIdentityContent] = useState('');
+  const [identitySaving, setIdentitySaving] = useState(false);
+  const [adminToken, setAdminToken] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateLog, setUpdateLog] = useState<string[]>([]);
+  const [updateStatus, setUpdateStatus] = useState('idle');
 
   useEffect(() => { loadConfig(); }, []);
 
@@ -62,10 +71,26 @@ export default function SystemConfig() {
     if (r.ok) setDocs(r.docs || []);
   };
 
+  const loadIdentityDocs = async () => {
+    const r = await api.getIdentityDocs();
+    if (r.ok) {
+      setIdentityDocs(r.docs || []);
+      if (!selectedIdentityDoc && r.docs?.length > 0) {
+        setSelectedIdentityDoc(r.docs[0]);
+        setIdentityContent(r.docs[0].content || '');
+      }
+    }
+  };
+
+  const loadAdminToken = async () => {
+    const r = await api.getAdminToken();
+    if (r.ok) setAdminToken(r.token || '');
+  };
+
   useEffect(() => {
     if (tab === 'version') loadVersion();
     if (tab === 'env') loadEnv();
-    if (tab === 'docs') loadDocs();
+    if (tab === 'identity') { loadIdentityDocs(); loadAdminToken(); }
   }, [tab]);
 
   const getVal = (path: string): any => path.split('.').reduce((o: any, k: string) => o?.[k], config);
@@ -149,11 +174,10 @@ export default function SystemConfig() {
       <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
         {([
           { id: 'models' as ConfigTab, label: '模型配置', icon: Brain },
-          { id: 'identity' as ConfigTab, label: '身份 & 消息', icon: Users },
+          { id: 'identity' as ConfigTab, label: '身份 & 文档', icon: Users },
           { id: 'general' as ConfigTab, label: '通用配置', icon: Terminal },
           { id: 'version' as ConfigTab, label: '版本管理', icon: Package },
           { id: 'env' as ConfigTab, label: '环境检测', icon: Monitor },
-          { id: 'docs' as ConfigTab, label: '文档管理', icon: FileText },
         ]).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${tab === t.id ? 'border-violet-500 text-violet-600 dark:text-violet-400' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
@@ -188,7 +212,19 @@ export default function SystemConfig() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Brain size={14} className="text-violet-500" />
-                    <span className="text-xs font-semibold">{pid}</span>
+                    <input value={pid} onChange={e => {
+                      const newId = e.target.value;
+                      if (!newId || newId === pid) return;
+                      const clone = JSON.parse(JSON.stringify(config));
+                      clone.models.providers[newId] = clone.models.providers[pid];
+                      delete clone.models.providers[pid];
+                      // Update primary model reference if it uses this provider
+                      const primary = clone.agents?.defaults?.model?.primary || '';
+                      if (primary.startsWith(pid + '/')) {
+                        clone.agents.defaults.model.primary = newId + primary.slice(pid.length);
+                      }
+                      setConfig(clone);
+                    }} className="text-xs font-semibold bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 focus:border-violet-500 outline-none px-1 py-0.5 w-40" title="点击编辑 Provider ID" />
                     {prov.models?.length > 0 && <span className="text-[10px] text-gray-400">{prov.models.length} 个模型</span>}
                   </div>
                   <button onClick={() => {
@@ -233,23 +269,50 @@ export default function SystemConfig() {
 
                 <div>
                   <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-1">模型列表</label>
-                  {(prov.models || []).map((m: any, idx: number) => (
-                    <div key={idx} className="flex items-center gap-2 mb-1">
-                      <input value={typeof m === 'string' ? m : m.id || m.name || ''} onChange={e => {
-                        const clone = JSON.parse(JSON.stringify(config));
-                        const models = clone.models.providers[pid].models || [];
-                        if (typeof models[idx] === 'string') models[idx] = e.target.value;
-                        else models[idx] = { ...models[idx], id: e.target.value, name: e.target.value };
-                        clone.models.providers[pid].models = models;
-                        setConfig(clone);
-                      }} className="flex-1 px-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded bg-transparent font-mono" />
-                      <button onClick={() => {
-                        const clone = JSON.parse(JSON.stringify(config));
-                        clone.models.providers[pid].models.splice(idx, 1);
-                        setConfig(clone);
-                      }} className="text-red-400 hover:text-red-600"><Trash2 size={11} /></button>
+                  {(prov.models || []).map((m: any, idx: number) => {
+                    const mObj = typeof m === 'string' ? { id: m, name: m } : m;
+                    const updateModel = (key: string, val: any) => {
+                      const clone = JSON.parse(JSON.stringify(config));
+                      const models = clone.models.providers[pid].models || [];
+                      if (typeof models[idx] === 'string') models[idx] = { id: models[idx], name: models[idx] };
+                      models[idx] = { ...models[idx], [key]: val };
+                      if (key === 'id') models[idx].name = val;
+                      clone.models.providers[pid].models = models;
+                      setConfig(clone);
+                    };
+                    return (
+                    <div key={idx} className="mb-2 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <input value={mObj.id || ''} onChange={e => updateModel('id', e.target.value)}
+                          placeholder="模型ID" className="flex-1 px-2 py-1 text-[11px] border border-gray-200 dark:border-gray-700 rounded bg-transparent font-mono" />
+                        <button onClick={() => {
+                          const clone = JSON.parse(JSON.stringify(config));
+                          clone.models.providers[pid].models.splice(idx, 1);
+                          setConfig(clone);
+                        }} className="text-red-400 hover:text-red-600"><Trash2 size={11} /></button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <div>
+                          <label className="text-[9px] text-gray-400">contextWindow</label>
+                          <input type="number" value={mObj.contextWindow ?? ''} onChange={e => updateModel('contextWindow', e.target.value ? Number(e.target.value) : undefined)}
+                            placeholder="128000" className="w-full px-1.5 py-0.5 text-[10px] border border-gray-200 dark:border-gray-700 rounded bg-transparent font-mono" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-gray-400">maxTokens</label>
+                          <input type="number" value={mObj.maxTokens ?? ''} onChange={e => updateModel('maxTokens', e.target.value ? Number(e.target.value) : undefined)}
+                            placeholder="8192" className="w-full px-1.5 py-0.5 text-[10px] border border-gray-200 dark:border-gray-700 rounded bg-transparent font-mono" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-gray-400">reasoning</label>
+                          <button onClick={() => updateModel('reasoning', !mObj.reasoning)}
+                            className={`w-full px-1.5 py-0.5 text-[10px] rounded border ${mObj.reasoning ? 'bg-violet-100 dark:bg-violet-900 border-violet-300 dark:border-violet-700 text-violet-700 dark:text-violet-300' : 'bg-transparent border-gray-200 dark:border-gray-700 text-gray-500'}`}>
+                            {mObj.reasoning ? '✓ 是' : '✗ 否'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   <div className="flex gap-1 mt-1 flex-wrap">
                     <button onClick={() => {
                       const clone = JSON.parse(JSON.stringify(config));
@@ -282,6 +345,16 @@ export default function SystemConfig() {
       {/* === Identity & Messages Tab === */}
       {tab === 'identity' && (
         <div className="space-y-3">
+          {/* Login password display */}
+          <div className="card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Key size={14} className="text-violet-500" />
+              <h3 className="text-sm font-semibold">管理后台登录密码</h3>
+            </div>
+            <AdminPasswordField token={adminToken} onCopy={() => { setMsg('密码已复制'); setTimeout(() => setMsg(''), 2000); }} />
+            <p className="text-[10px] text-gray-400">此密码在 .env 文件中的 ADMIN_TOKEN 配置</p>
+          </div>
+
           <CfgSection title="身份设置" icon={Users} fields={[
             { path: 'ui.assistant.name', label: '助手名称', type: 'text' as const, placeholder: 'OpenClaw' },
             { path: 'ui.assistant.avatar', label: '助手头像', type: 'text' as const, placeholder: 'emoji或URL' },
@@ -299,6 +372,58 @@ export default function SystemConfig() {
             { path: 'agents.defaults.compaction.mode', label: '压缩模式', type: 'select' as const, options: ['default', 'aggressive', 'off'] },
             { path: 'agents.defaults.compaction.maxHistoryShare', label: '历史占比上限', type: 'number' as const, placeholder: '0.5' },
           ]} getVal={getVal} setVal={setVal} />
+
+          {/* Identity MD files editor */}
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-100 dark:border-gray-800">
+              <FileText size={14} className="text-violet-500" />
+              <h3 className="text-sm font-semibold">身份文档 (Markdown)</h3>
+              <span className="text-[10px] text-gray-400">AGENTS.md / BOOTSTRAP.md / HEARTBEAT.md / IDENTITY.md / SOUL.md / TOOLS.md / USER.md</span>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-4">
+              <div className="p-2 space-y-0.5 border-r border-gray-100 dark:border-gray-800 max-h-[50vh] overflow-y-auto">
+                {identityDocs.map((doc: any) => (
+                  <button key={doc.name} onClick={() => { setSelectedIdentityDoc(doc); setIdentityContent(doc.content || ''); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-xs transition-colors ${
+                      selectedIdentityDoc?.name === doc.name
+                        ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}>
+                    <FileText size={12} />
+                    <div className="min-w-0">
+                      <div className="truncate">{doc.name}</div>
+                      <div className="text-[10px] text-gray-400">{doc.exists === false ? '未创建' : `${(doc.size / 1024).toFixed(1)} KB`}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="lg:col-span-3 p-3">
+                {selectedIdentityDoc ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-semibold">{selectedIdentityDoc.name}</h4>
+                      <button onClick={async () => {
+                        setIdentitySaving(true);
+                        try {
+                          await api.saveIdentityDoc(selectedIdentityDoc.path, identityContent);
+                          setMsg('文档已保存');
+                          loadIdentityDocs();
+                        } catch (err) { setMsg('保存失败: ' + String(err)); }
+                        finally { setIdentitySaving(false); setTimeout(() => setMsg(''), 3000); }
+                      }} disabled={identitySaving}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
+                        <Save size={12} />{identitySaving ? '保存中...' : '保存'}
+                      </button>
+                    </div>
+                    <textarea value={identityContent} onChange={e => setIdentityContent(e.target.value)}
+                      className="w-full h-[40vh] px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent resize-none font-mono leading-relaxed" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 text-xs text-gray-400">选择左侧文档进行编辑</div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -312,26 +437,22 @@ export default function SystemConfig() {
             { path: 'gateway.auth.mode', label: '认证模式', type: 'select' as const, options: ['token', 'password'] },
             { path: 'gateway.auth.token', label: '认证Token', type: 'password' as const },
           ]} getVal={getVal} setVal={setVal} />
-          <CfgSection title="工具配置" icon={Terminal} fields={[
-            { path: 'tools.mediaUnderstanding.enabled', label: '媒体理解', type: 'toggle' as const },
-            { path: 'tools.webSearch.enabled', label: '网页搜索', type: 'toggle' as const },
-            { path: 'tools.webSearch.provider', label: '搜索引擎', type: 'select' as const, options: ['google', 'bing', 'duckduckgo', 'brave'] },
-          ]} getVal={getVal} setVal={setVal} />
           <CfgSection title="Hooks" icon={Webhook} fields={[
             { path: 'hooks.enabled', label: '启用Hooks', type: 'toggle' as const },
             { path: 'hooks.basePath', label: '基础路径', type: 'text' as const, placeholder: '/hooks' },
             { path: 'hooks.secret', label: 'Webhook密钥', type: 'password' as const },
           ]} getVal={getVal} setVal={setVal} />
-          <CfgSection title="会话配置" icon={Eye} fields={[
-            { path: 'session.compaction.enabled', label: '自动压缩', type: 'toggle' as const },
-            { path: 'session.compaction.threshold', label: '压缩阈值(tokens)', type: 'number' as const, placeholder: '100000' },
-            { path: 'session.pruning.enabled', label: '自动修剪', type: 'toggle' as const },
+          <CfgSection title="命令配置" icon={Terminal} fields={[
+            { path: 'commands.native', label: '原生命令', type: 'select' as const, options: ['auto', 'on', 'off'] },
+            { path: 'commands.nativeSkills', label: '原生技能', type: 'select' as const, options: ['auto', 'on', 'off'] },
+            { path: 'commands.restart', label: '允许重启', type: 'toggle' as const },
           ]} getVal={getVal} setVal={setVal} />
           <CfgSection title="认证密钥" icon={Key} fields={[
             { path: 'env.vars.ANTHROPIC_API_KEY', label: 'Anthropic API Key', type: 'password' as const },
             { path: 'env.vars.OPENAI_API_KEY', label: 'OpenAI API Key', type: 'password' as const },
             { path: 'env.vars.GOOGLE_API_KEY', label: 'Google API Key', type: 'password' as const },
           ]} getVal={getVal} setVal={setVal} />
+          <SudoPasswordSection />
           <details className="card">
             <summary className="px-4 py-3 text-xs font-medium text-gray-500 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50">查看原始配置 (JSON)</summary>
             <pre className="px-4 pb-4 text-[11px] text-gray-600 dark:text-gray-400 overflow-x-auto max-h-96 overflow-y-auto font-mono">{JSON.stringify(config, null, 2)}</pre>
@@ -369,13 +490,80 @@ export default function SystemConfig() {
                 </div>
                 <div>
                   <p className="text-[10px] text-gray-500">上次检查</p>
-                  <p className="text-xs text-gray-600">{versionInfo.lastCheckedAt ? new Date(versionInfo.lastCheckedAt).toLocaleString('zh-CN') : '-'}</p>
+                  <p className="text-xs text-gray-600">{versionInfo.lastCheckedAt ? new Date(versionInfo.lastCheckedAt).toLocaleString('zh-CN') : versionInfo.checkedAt ? new Date(versionInfo.checkedAt).toLocaleString('zh-CN') : '-'}</p>
                 </div>
               </div>
             </div>
-            {versionInfo.updateAvailable && (
+            <div className="mt-3 flex items-center gap-2">
+              <button onClick={async () => {
+                setChecking(true);
+                try {
+                  const r = await api.checkUpdate();
+                  if (r.ok) {
+                    setVersionInfo({ ...versionInfo, ...r, lastCheckedAt: r.checkedAt || new Date().toISOString() });
+                    setMsg(r.updateAvailable ? `发现新版本: ${r.latestVersion}` : '已是最新版本');
+                  } else { setMsg('检查更新失败'); }
+                } catch { setMsg('检查更新失败'); }
+                finally { setChecking(false); setTimeout(() => setMsg(''), 3000); }
+              }} disabled={checking || updating}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                <RefreshCw size={13} className={checking ? 'animate-spin' : ''} />
+                {checking ? '检查中...' : '检查更新'}
+              </button>
+              {versionInfo.updateAvailable && !updating && updateStatus !== 'running' && (
+                <button onClick={async () => {
+                  if (!confirm('确定要更新 OpenClaw？更新过程中服务可能短暂中断。')) return;
+                  setUpdating(true); setUpdateLog([]); setUpdateStatus('running');
+                  try {
+                    const r = await api.doUpdate();
+                    if (!r.ok) { setMsg(r.error || '启动更新失败'); setUpdating(false); setUpdateStatus('failed'); return; }
+                  } catch { setMsg('启动更新失败'); setUpdating(false); setUpdateStatus('failed'); return; }
+                  // Poll update status
+                  const poll = setInterval(async () => {
+                    try {
+                      const s = await api.getUpdateStatus();
+                      if (s.ok) {
+                        setUpdateLog(s.log || []);
+                        setUpdateStatus(s.status);
+                        if (s.status === 'success') {
+                          clearInterval(poll);
+                          setUpdating(false);
+                          setMsg('更新完成！正在刷新...');
+                          setTimeout(() => { loadVersion(); }, 2000);
+                        } else if (s.status === 'failed') {
+                          clearInterval(poll);
+                          setUpdating(false);
+                          setMsg('更新失败，请查看日志');
+                        }
+                      }
+                    } catch { /* server might restart during update */ }
+                  }, 2000);
+                }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700">
+                  <Package size={13} />立即更新
+                </button>
+              )}
+            </div>
+            {versionInfo.updateAvailable && !updating && updateStatus !== 'running' && (
               <div className="mt-3 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950 text-xs text-amber-700 dark:text-amber-300">
-                有新版本可用！请在终端运行: <code className="font-mono bg-amber-100 dark:bg-amber-900 px-1 rounded">openclaw update</code>
+                有新版本可用！点击「立即更新」一键升级，或在终端运行: <code className="font-mono bg-amber-100 dark:bg-amber-900 px-1 rounded">openclaw update</code>
+              </div>
+            )}
+            {/* Update progress */}
+            {(updating || updateStatus === 'running' || updateLog.length > 0) && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  {updateStatus === 'running' && <RefreshCw size={13} className="animate-spin text-blue-500" />}
+                  {updateStatus === 'success' && <CheckCircle size={13} className="text-emerald-500" />}
+                  {updateStatus === 'failed' && <AlertTriangle size={13} className="text-red-500" />}
+                  <span className="text-xs font-medium">
+                    {updateStatus === 'running' ? '正在更新...' : updateStatus === 'success' ? '更新完成' : updateStatus === 'failed' ? '更新失败' : ''}
+                  </span>
+                </div>
+                <div className="bg-gray-900 dark:bg-black rounded-lg p-3 max-h-48 overflow-y-auto font-mono text-[11px] text-gray-300 space-y-0.5">
+                  {updateLog.map((line, i) => <div key={i}>{line}</div>)}
+                  {updateStatus === 'running' && <div className="animate-pulse text-blue-400">▌</div>}
+                </div>
               </div>
             )}
           </div>
@@ -423,12 +611,16 @@ export default function SystemConfig() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
                     ['平台', envInfo.os?.platform], ['架构', envInfo.os?.arch],
-                    ['内核', envInfo.os?.release], ['主机名', envInfo.os?.hostname],
+                    ['发行版', envInfo.os?.distro], ['内核', envInfo.os?.release],
+                    ['主机名', envInfo.os?.hostname], ['用户', envInfo.os?.userInfo],
                     ['CPU 核心', envInfo.os?.cpus ? `${envInfo.os.cpus} 核` : '-'],
-                    ['总内存', envInfo.os?.totalMemMB ? `${envInfo.os.totalMemMB} MB` : '-'],
-                    ['可用内存', envInfo.os?.freeMemMB ? `${envInfo.os.freeMemMB} MB` : '-'],
+                    ['CPU 型号', envInfo.os?.cpuModel],
+                    ['总内存', envInfo.os?.totalMemMB ? `${(envInfo.os.totalMemMB / 1024).toFixed(1)} GB (${envInfo.os.totalMemMB} MB)` : '-'],
+                    ['可用内存', envInfo.os?.freeMemMB ? `${(envInfo.os.freeMemMB / 1024).toFixed(1)} GB (${envInfo.os.freeMemMB} MB)` : '-'],
+                    ['系统运行', envInfo.os?.uptime ? formatEnvUptime(envInfo.os.uptime) : '-'],
+                    ['负载均值', envInfo.os?.loadAvg],
                   ].map(([label, value]) => (
-                    <div key={label as string}><p className="text-[10px] text-gray-500">{label}</p><p className="text-xs font-medium truncate">{(value as string) || '-'}</p></div>
+                    <div key={label as string}><p className="text-[10px] text-gray-500">{label}</p><p className="text-xs font-medium truncate" title={String(value || '')}>{(value as string) || '-'}</p></div>
                   ))}
                 </div>
               </div>
@@ -441,6 +633,8 @@ export default function SystemConfig() {
                     { name: 'Git', value: envInfo.software?.git, required: true },
                     { name: 'OpenClaw', value: envInfo.software?.openclaw, required: true },
                     { name: 'npm', value: envInfo.software?.npm, required: false },
+                    { name: 'Bun', value: envInfo.software?.bun, required: false },
+                    { name: 'Python', value: envInfo.software?.python, required: false },
                   ].map(sw => {
                     const installed = sw.value && !sw.value.includes('not installed') && !sw.value.includes('not found');
                     return (
@@ -467,47 +661,75 @@ export default function SystemConfig() {
         </div>
       )}
 
-      {/* === Docs Management Tab === */}
-      {tab === 'docs' && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <div className="card p-3 space-y-1 max-h-[70vh] overflow-y-auto">
-            <h3 className="text-xs font-semibold text-gray-500 mb-2 px-1">OpenClaw 文档</h3>
-            {docs.length === 0 ? (
-              <p className="text-xs text-gray-400 py-4 text-center">暂无 MD 文档</p>
-            ) : docs.map((doc: any) => (
-              <button key={doc.name} onClick={() => { setSelectedDoc(doc); setDocContent(doc.content); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-xs transition-colors ${
-                  selectedDoc?.name === doc.name
-                    ? 'bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 font-medium'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}>
-                <FileText size={13} />
-                <div className="min-w-0">
-                  <div className="truncate">{doc.name}</div>
-                  <div className="text-[10px] text-gray-400">{(doc.size / 1024).toFixed(1)} KB</div>
-                </div>
-              </button>
-            ))}
-          </div>
-          <div className="lg:col-span-3 card p-4">
-            {selectedDoc ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">{selectedDoc.name}</h3>
-                  <button onClick={handleSaveDoc} disabled={docSaving}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50">
-                    <Save size={13} />{docSaving ? '保存中...' : '保存'}
-                  </button>
-                </div>
-                <textarea value={docContent} onChange={e => setDocContent(e.target.value)}
-                  className="w-full h-[60vh] px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent resize-none font-mono leading-relaxed" />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-40 text-xs text-gray-400">选择左侧文档进行查看和编辑</div>
-            )}
-          </div>
+      {/* Docs tab removed — merged into Identity & 文档 tab */}
+    </div>
+  );
+}
+
+function AdminPasswordField({ token, onCopy }: { token: string; onCopy: () => void }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative flex-1">
+        <input type={visible ? 'text' : 'password'} readOnly value={token}
+          className="w-full px-3 py-2 pr-9 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 font-mono" />
+        <button onClick={() => setVisible(!visible)} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+          {visible ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      </div>
+      <button onClick={() => { navigator.clipboard.writeText(token); onCopy(); }}
+        className="px-3 py-2 text-xs rounded-lg bg-violet-100 dark:bg-violet-900 text-violet-600 hover:bg-violet-200 shrink-0">复制</button>
+    </div>
+  );
+}
+
+function formatEnvUptime(s: number) {
+  if (s < 60) return `${s}秒`;
+  if (s < 3600) return `${Math.floor(s / 60)}分${s % 60}秒`;
+  if (s < 86400) return `${Math.floor(s / 3600)}时${Math.floor((s % 3600) / 60)}分`;
+  return `${Math.floor(s / 86400)}天${Math.floor((s % 86400) / 3600)}时${Math.floor((s % 3600) / 60)}分`;
+}
+
+function SudoPasswordSection() {
+  const [pwd, setPwd] = useState('');
+  const [configured, setConfigured] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    api.getSudoPassword().then(r => { if (r.ok) setConfigured(r.configured); });
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const r = await api.setSudoPassword(pwd);
+      if (r.ok) { setMsg('已保存'); setConfigured(true); setPwd(''); }
+      else setMsg('保存失败');
+    } catch { setMsg('保存失败'); }
+    finally { setSaving(false); setTimeout(() => setMsg(''), 3000); }
+  };
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-3 flex items-center gap-2">
+        <Key size={14} className="text-amber-500" />
+        <h3 className="text-sm font-semibold">Sudo 密码</h3>
+        {configured && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-600">已配置</span>}
+        {!configured && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">未配置</span>}
+      </div>
+      <div className="px-4 pb-3 space-y-2">
+        <p className="text-[10px] text-gray-400">用于系统更新等需要 sudo 权限的操作</p>
+        <div className="flex items-center gap-2">
+          <input type="password" value={pwd} onChange={e => setPwd(e.target.value)} placeholder={configured ? '••••••（已配置，留空不修改）' : '输入 sudo 密码'}
+            className="flex-1 px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-transparent" />
+          <button onClick={handleSave} disabled={saving || !pwd}
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50">
+            {saving ? '保存中...' : '保存'}
+          </button>
         </div>
-      )}
+        {msg && <p className="text-[10px] text-emerald-600">{msg}</p>}
+      </div>
     </div>
   );
 }
