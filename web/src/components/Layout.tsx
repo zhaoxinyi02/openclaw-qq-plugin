@@ -5,6 +5,7 @@ import {
   Moon, Sun, LogOut, Menu, FolderOpen, Cat, Languages,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
+import AIAssistant from './AIAssistant';
 
 interface Props { onLogout: () => void; napcatStatus: any; wechatStatus?: any; openclawStatus?: any; }
 
@@ -140,6 +141,7 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus, openclawS
         </header>
         <div className="flex-1 overflow-y-auto p-4 lg:p-6"><Outlet /></div>
       </main>
+      <AIAssistant />
     </div>
   );
 }

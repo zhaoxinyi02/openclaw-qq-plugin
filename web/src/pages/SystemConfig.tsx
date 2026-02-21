@@ -9,15 +9,28 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 
-const KNOWN_PROVIDERS: { id: string; name: string; baseUrl: string; models: string[] }[] = [
-  { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1', 'o1-mini', 'o3-mini'] },
-  { id: 'anthropic', name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', models: ['claude-sonnet-4-5', 'claude-haiku-3-5', 'claude-3-opus'] },
-  { id: 'google', name: 'Google', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', models: ['gemini-2.0-flash', 'gemini-2.0-pro', 'gemini-1.5-pro'] },
-  { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-reasoner'] },
-  { id: 'nvidia', name: 'NVIDIA NIM', baseUrl: 'https://integrate.api.nvidia.com/v1', models: ['minimaxai/minimax-m2.1', 'meta/llama-3.1-405b-instruct'] },
-  { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', models: ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768'] },
-  { id: 'together', name: 'Together AI', baseUrl: 'https://api.together.xyz/v1', models: ['meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'] },
-  { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', models: ['anthropic/claude-sonnet-4-5', 'openai/gpt-4o'] },
+const KNOWN_PROVIDERS: { id: string; name: string; nameZh?: string; baseUrl: string; apiType?: string; apiKeyUrl: string; models: string[]; category: 'cn' | 'intl' | 'agg' }[] = [
+  // === 国内主流 ===
+  { id: 'volcengine', name: 'Volcengine Ark', nameZh: '火山方舟（字节）', baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', apiKeyUrl: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey', models: ['doubao-pro-256k', 'doubao-lite-128k', 'deepseek-v3', 'deepseek-r1'], category: 'cn' },
+  { id: 'deepseek', name: 'DeepSeek', nameZh: '深度求索', baseUrl: 'https://api.deepseek.com/v1', apiKeyUrl: 'https://platform.deepseek.com/api_keys', models: ['deepseek-chat', 'deepseek-reasoner'], category: 'cn' },
+  { id: 'siliconflow', name: 'SiliconFlow', nameZh: '硅基流动', baseUrl: 'https://api.siliconflow.cn/v1', apiKeyUrl: 'https://cloud.siliconflow.cn/account/ak', models: ['deepseek-ai/DeepSeek-V3', 'deepseek-ai/DeepSeek-R1', 'Qwen/Qwen2.5-72B-Instruct', 'THUDM/glm-4-9b-chat'], category: 'cn' },
+  { id: 'dashscope', name: 'DashScope', nameZh: '通义千问（阿里）', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKeyUrl: 'https://dashscope.console.aliyun.com/apiKey', models: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-vl-max', 'qwen-coder-plus'], category: 'cn' },
+  { id: 'ernie', name: 'Wenxin', nameZh: '文心一言（百度）', baseUrl: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat', apiKeyUrl: 'https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application', models: ['ernie-4.0-8k', 'ernie-3.5-8k', 'ernie-speed-128k', 'ernie-lite-8k'], category: 'cn' },
+  { id: 'hunyuan', name: 'Hunyuan', nameZh: '混元（腾讯）', baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1', apiKeyUrl: 'https://console.cloud.tencent.com/cam/capi', models: ['hunyuan-pro', 'hunyuan-standard', 'hunyuan-lite', 'hunyuan-vision'], category: 'cn' },
+  { id: 'zhipu', name: 'Zhipu AI', nameZh: '智谱清言（GLM）', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', apiKeyUrl: 'https://open.bigmodel.cn/usercenter/apikeys', models: ['glm-4-plus', 'glm-4', 'glm-4-flash', 'glm-4v-plus'], category: 'cn' },
+  { id: 'yi', name: 'Yi / Lingyiwanwu', nameZh: '零一万物', baseUrl: 'https://api.lingyiwanwu.com/v1', apiKeyUrl: 'https://platform.lingyiwanwu.com/apikeys', models: ['yi-large', 'yi-medium', 'yi-small', 'yi-vision'], category: 'cn' },
+  { id: 'minimax', name: 'MiniMax', nameZh: 'MiniMax', baseUrl: 'https://api.minimax.chat/v1', apiKeyUrl: 'https://platform.minimaxi.com/user-center/basic-information/interface-key', models: ['MiniMax-Text-01', 'abab6.5s-chat', 'abab5.5-chat'], category: 'cn' },
+  { id: 'spark', name: 'Spark', nameZh: '星火（讯飞）', baseUrl: 'https://spark-api-open.xf-yun.com/v1', apiKeyUrl: 'https://console.xfyun.cn/services/bm35', models: ['spark-pro-128k', 'spark-lite', 'spark-max'], category: 'cn' },
+  // === 国际主流 ===
+  { id: 'openai', name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', apiKeyUrl: 'https://platform.openai.com/api-keys', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1', 'o1-mini', 'o3-mini'], category: 'intl' },
+  { id: 'anthropic', name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', apiType: 'anthropic', apiKeyUrl: 'https://console.anthropic.com/settings/keys', models: ['claude-sonnet-4-5', 'claude-haiku-3-5', 'claude-3-opus'], category: 'intl' },
+  { id: 'google', name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', apiType: 'google-genai', apiKeyUrl: 'https://aistudio.google.com/app/apikey', models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'], category: 'intl' },
+  { id: 'xai', name: 'xAI (Grok)', baseUrl: 'https://api.x.ai/v1', apiKeyUrl: 'https://console.x.ai/', models: ['grok-3', 'grok-3-mini', 'grok-2'], category: 'intl' },
+  { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', apiKeyUrl: 'https://console.groq.com/keys', models: ['llama-3.3-70b-versatile', 'mixtral-8x7b-32768', 'gemma2-9b-it'], category: 'intl' },
+  // === 聚合平台 ===
+  { id: 'openrouter', name: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', apiKeyUrl: 'https://openrouter.ai/keys', models: ['anthropic/claude-sonnet-4-5', 'openai/gpt-4o', 'google/gemini-2.5-pro', 'deepseek/deepseek-r1'], category: 'agg' },
+  { id: 'together', name: 'Together AI', baseUrl: 'https://api.together.xyz/v1', apiKeyUrl: 'https://api.together.xyz/settings/api-keys', models: ['meta-llama/Llama-3.3-70B-Instruct-Turbo', 'Qwen/Qwen2.5-72B-Instruct-Turbo'], category: 'agg' },
+  { id: 'nvidia', name: 'NVIDIA NIM', baseUrl: 'https://integrate.api.nvidia.com/v1', apiKeyUrl: 'https://build.nvidia.com/models', models: ['meta/llama-3.1-405b-instruct', 'minimaxai/minimax-m2.1'], category: 'agg' },
 ];
 
 type ConfigTab = 'models' | 'identity' | 'general' | 'version' | 'env';
@@ -47,6 +60,8 @@ export default function SystemConfig() {
   const [updating, setUpdating] = useState(false);
   const [updateLog, setUpdateLog] = useState<string[]>([]);
   const [updateStatus, setUpdateStatus] = useState('idle');
+  const [showRestartPrompt, setShowRestartPrompt] = useState(false);
+  const [restarting, setRestarting] = useState(false);
 
   useEffect(() => { loadConfig(); }, []);
 
@@ -112,7 +127,12 @@ export default function SystemConfig() {
     try {
       await api.updateOpenClawConfig(config);
       setMsg(i18n.sysConfig.saveSuccess);
-      setTimeout(() => setMsg(''), 4000);
+      // If on models tab, prompt to restart gateway
+      if (tab === 'models') {
+        setMsg('✅ 配置已保存！模型配置变更需要重启 OpenClaw 网关才能生效。');
+        setShowRestartPrompt(true);
+      }
+      setTimeout(() => setMsg(''), 6000);
     } catch (err) { setMsg(i18n.sysConfig.saveFailed + ': ' + String(err)); }
     finally { setSaving(false); }
   };
@@ -193,24 +213,101 @@ export default function SystemConfig() {
       {/* === Models Tab === */}
       {tab === 'models' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-200">
+          {showRestartPrompt && (
+            <div className="rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 overflow-hidden">
+              <div className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
+                  <AlertTriangle size={16} className="shrink-0" />
+                  <span>模型配置已保存。OpenClaw 需要<strong>重启网关</strong>才能使用新模型。</span>
+                </div>
+                <button onClick={async () => {
+                  setRestarting(true);
+                  try {
+                    await api.restartGateway();
+                    setMsg('✅ 网关重启请求已发送，请等待几秒钟');
+                    setShowRestartPrompt(false);
+                  } catch { setMsg('❌ 重启失败'); }
+                  finally { setRestarting(false); setTimeout(() => setMsg(''), 4000); }
+                }} disabled={restarting}
+                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 shadow-sm transition-all whitespace-nowrap shrink-0">
+                  <RefreshCw size={12} className={restarting ? 'animate-spin' : ''} />
+                  {restarting ? '重启中...' : '重启网关'}
+                </button>
+              </div>
+              <div className="px-4 pb-3 text-[11px] text-amber-600/80 dark:text-amber-400/70 leading-relaxed">
+                💡 重启后如果 OpenClaw 回复「Message ordering conflict」，请发送 <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded font-mono">/new</code> 开始新会话即可。这是 OpenClaw 切换模型后的正常现象。
+              </div>
+            </div>
+          )}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <Brain size={16} className="text-violet-500" /> {i18n.sysConfig.primaryModel}
             </h3>
             <div className="relative">
-              <input value={primaryModel} onChange={e => setVal('agents.defaults.model.primary', e.target.value)}
-                placeholder="provider-id/model-name" 
-                className="w-full pl-4 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-mono" />
+              <select value={primaryModel} onChange={e => setVal('agents.defaults.model.primary', e.target.value)}
+                className="w-full pl-4 pr-10 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-mono appearance-none cursor-pointer">
+                <option value="">选择主模型...</option>
+                {Object.entries(providers).map(([pid, prov]: [string, any]) => {
+                  const hasKey = !!(prov as any).apiKey;
+                  return (prov.models || []).map((m: any) => {
+                    const mid = typeof m === 'string' ? m : m.id;
+                    const val = `${pid}/${mid}`;
+                    return <option key={val} value={val} disabled={!hasKey} style={!hasKey ? { color: '#9ca3af' } : {}}>{val}{!hasKey ? ' (未配置 API Key)' : ''}</option>;
+                  });
+                })}
+              </select>
+              <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
-            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
-              格式: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-violet-600 dark:text-violet-400">provider-id/model-name</code>，如 <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">openai/gpt-4o</code>
-            </p>
+            {primaryModel && (
+              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                当前: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-violet-600 dark:text-violet-400 font-mono">{primaryModel}</code>
+              </p>
+            )}
+          </div>
+
+          {/* Quick add provider from presets */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5 space-y-3">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Plus size={16} className="text-violet-500" /> 快速添加模型服务商
+            </h3>
+            <p className="text-xs text-gray-500">点击服务商名称一键添加，填入 API Key 即可使用</p>
+            <div className="space-y-2">
+              {[
+                { label: '国内主流', cat: 'cn' as const, color: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-800/30 hover:bg-red-100 dark:hover:bg-red-900/40' },
+                { label: '国际主流', cat: 'intl' as const, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/30 hover:bg-blue-100 dark:hover:bg-blue-900/40' },
+                { label: '聚合平台', cat: 'agg' as const, color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/30 hover:bg-amber-100 dark:hover:bg-amber-900/40' },
+              ].map(({ label, cat, color }) => (
+                <div key={cat} className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider w-12 shrink-0">{label}</span>
+                  {KNOWN_PROVIDERS.filter(kp => kp.category === cat).map(kp => {
+                    const alreadyAdded = Object.keys(providers).includes(kp.id);
+                    return (
+                      <button key={kp.id} disabled={alreadyAdded} onClick={() => {
+                        const clone = JSON.parse(JSON.stringify(config));
+                        if (!clone.models) clone.models = {};
+                        if (!clone.models.providers) clone.models.providers = {};
+                        clone.models.providers[kp.id] = {
+                          baseUrl: kp.baseUrl,
+                          apiKey: '',
+                          api: kp.apiType || 'openai-completions',
+                          models: kp.models.map(m => ({ id: m, name: m, contextWindow: 128000, maxTokens: 8192 })),
+                        };
+                        setConfig(clone);
+                      }} className={`px-2 py-0.5 text-[10px] font-medium rounded-md border transition-colors ${alreadyAdded ? 'opacity-40 cursor-not-allowed bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700' : color}`}
+                        title={alreadyAdded ? '已添加' : `点击添加 ${kp.nameZh || kp.name}`}>
+                        {kp.nameZh || kp.name}{alreadyAdded ? ' ✓' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{i18n.sysConfig.modelProviders}</h3>
+              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">{i18n.sysConfig.modelProviders} ({Object.keys(providers).length})</h3>
               <button onClick={() => {
                 const id = `provider-${Date.now()}`;
                 setVal(`models.providers.${id}`, { baseUrl: '', apiKey: '', api: 'openai-completions', models: [] });
@@ -250,15 +347,49 @@ export default function SystemConfig() {
                     }} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
                   </div>
 
-                  <div className="flex gap-2 flex-wrap pb-2">
-                    {KNOWN_PROVIDERS.map(kp => (
-                      <button key={kp.id} onClick={() => {
-                        setVal(`models.providers.${pid}.baseUrl`, kp.baseUrl);
-                        setVal(`models.providers.${pid}.api`, 'openai-completions');
-                      }} className="px-2.5 py-1 text-[10px] font-medium rounded-md bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 hover:bg-violet-50 hover:text-violet-600 dark:hover:bg-violet-900/30 dark:hover:text-violet-300 transition-colors border border-gray-100 dark:border-gray-700">
-                        {kp.name}
-                      </button>
-                    ))}
+                  <div className="space-y-2 pb-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mr-1">国内</span>
+                      {KNOWN_PROVIDERS.filter(kp => kp.category === 'cn').map(kp => (
+                        <button key={kp.id} onClick={() => {
+                          const clone = JSON.parse(JSON.stringify(config));
+                          if (!clone.models) clone.models = {};
+                          if (!clone.models.providers) clone.models.providers = {};
+                          clone.models.providers[pid] = { ...clone.models.providers[pid], baseUrl: kp.baseUrl, api: kp.apiType || 'openai-completions' };
+                          setConfig(clone);
+                        }} className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-100 dark:border-red-800/30" title={kp.nameZh}>
+                          {kp.nameZh || kp.name}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mr-1">国际</span>
+                      {KNOWN_PROVIDERS.filter(kp => kp.category === 'intl').map(kp => (
+                        <button key={kp.id} onClick={() => {
+                          const clone = JSON.parse(JSON.stringify(config));
+                          if (!clone.models) clone.models = {};
+                          if (!clone.models.providers) clone.models.providers = {};
+                          clone.models.providers[pid] = { ...clone.models.providers[pid], baseUrl: kp.baseUrl, api: kp.apiType || 'openai-completions' };
+                          setConfig(clone);
+                        }} className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors border border-blue-100 dark:border-blue-800/30">
+                          {kp.name}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mr-1">聚合</span>
+                      {KNOWN_PROVIDERS.filter(kp => kp.category === 'agg').map(kp => (
+                        <button key={kp.id} onClick={() => {
+                          const clone = JSON.parse(JSON.stringify(config));
+                          if (!clone.models) clone.models = {};
+                          if (!clone.models.providers) clone.models.providers = {};
+                          clone.models.providers[pid] = { ...clone.models.providers[pid], baseUrl: kp.baseUrl, api: kp.apiType || 'openai-completions' };
+                          setConfig(clone);
+                        }} className="px-2 py-0.5 text-[10px] font-medium rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors border border-amber-100 dark:border-amber-800/30">
+                          {kp.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -268,7 +399,18 @@ export default function SystemConfig() {
                         placeholder="https://api.openai.com/v1" className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-mono" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">API Key</label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">API Key</label>
+                        {(() => {
+                          const matched = KNOWN_PROVIDERS.find(kp => prov.baseUrl?.includes(kp.baseUrl.replace('https://', '').split('/')[0]));
+                          return matched ? (
+                            <a href={matched.apiKeyUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-[10px] text-violet-500 hover:text-violet-700 dark:hover:text-violet-300 flex items-center gap-1 hover:underline">
+                              <Key size={10} /> 获取 API Key
+                            </a>
+                          ) : null;
+                        })()}
+                      </div>
                       <div className="relative group">
                         <input type="password" value={prov.apiKey || ''} onChange={e => setVal(`models.providers.${pid}.apiKey`, e.target.value)}
                           placeholder="sk-..." className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-mono tracking-wider" />
@@ -277,19 +419,25 @@ export default function SystemConfig() {
                         </div>
                       </div>
                     </div>
-                    <div className="md:col-span-2">
+                    <div>
                       <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">API 类型</label>
                       <div className="relative">
                         <select value={prov.api || 'openai-completions'} onChange={e => setVal(`models.providers.${pid}.api`, e.target.value)}
                           className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 appearance-none cursor-pointer">
-                          <option value="openai-completions">OpenAI Completions (Standard)</option>
+                          <option value="openai-completions">OpenAI Completions (通用)</option>
                           <option value="anthropic">Anthropic</option>
                           <option value="google-genai">Google GenAI</option>
                         </select>
                         <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                       </div>
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">备注 (可选)</label>
+                      <input value={prov._note || ''} onChange={e => setVal(`models.providers.${pid}._note`, e.target.value)}
+                        placeholder="例: 公司账号 / 个人测试" className="w-full px-3.5 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all" />
+                    </div>
                   </div>
+                  <ProviderHealthCheck pid={pid} prov={prov} />
 
                   <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">模型列表</label>
@@ -376,19 +524,22 @@ export default function SystemConfig() {
       {/* === Identity & Messages Tab === */}
       {tab === 'identity' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-200">
-          {/* Login password display */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600">
-                <Key size={16} />
+          {/* Login password display + change */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600">
+                  <Key size={16} />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white">管理后台登录密码</h3>
               </div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">管理后台登录密码</h3>
+              <AdminPasswordField token={adminToken} onCopy={() => { setMsg('密码已复制'); setTimeout(() => setMsg(''), 2000); }} />
+              <p className="text-xs text-gray-500 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-gray-400"></span>
+                此密码在 .env 文件中的 ADMIN_TOKEN 配置
+              </p>
             </div>
-            <AdminPasswordField token={adminToken} onCopy={() => { setMsg('密码已复制'); setTimeout(() => setMsg(''), 2000); }} />
-            <p className="text-xs text-gray-500 flex items-center gap-1.5">
-              <span className="w-1 h-1 rounded-full bg-gray-400"></span>
-              此密码在 .env 文件中的 ADMIN_TOKEN 配置
-            </p>
+            <ChangePasswordSection />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -514,7 +665,6 @@ export default function SystemConfig() {
             { path: 'env.vars.GOOGLE_API_KEY', label: 'Google API Key', type: 'password' as const },
           ]} getVal={getVal} setVal={setVal} />
           <SudoPasswordSection />
-          <ChangePasswordSection />
           <details className="card">
             <summary className="px-4 py-3 text-xs font-medium text-gray-500 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50">查看原始配置 (JSON)</summary>
             <pre className="px-4 pb-4 text-[11px] text-gray-600 dark:text-gray-400 overflow-x-auto max-h-96 overflow-y-auto font-mono">{JSON.stringify(config, null, 2)}</pre>
@@ -989,6 +1139,43 @@ function UpdateSection({ versionInfo, updating, setUpdating, updateStatus, setUp
         </div>
       )}
     </>
+  );
+}
+
+function ProviderHealthCheck({ pid, prov }: { pid: string; prov: any }) {
+  const [checking, setChecking] = useState(false);
+  const [result, setResult] = useState<{ healthy?: boolean; error?: string } | null>(null);
+
+  const check = async () => {
+    if (!prov.baseUrl || !prov.apiKey) { setResult({ healthy: false, error: '请先填写 Base URL 和 API Key' }); return; }
+    setChecking(true); setResult(null);
+    try {
+      const firstModel = (prov.models || [])[0];
+      const modelId = typeof firstModel === 'string' ? firstModel : firstModel?.id;
+      const r = await api.checkModelHealth(prov.baseUrl, prov.apiKey, prov.api || 'openai-completions', modelId);
+      setResult(r);
+    } catch (err: any) {
+      setResult({ healthy: false, error: err.message || '检测失败' });
+    } finally { setChecking(false); }
+  };
+
+  return (
+    <div className="flex items-center gap-3 pt-1">
+      <button onClick={check} disabled={checking}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-medium rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 transition-colors disabled:opacity-50">
+        {checking ? <RefreshCw size={12} className="animate-spin" /> : <CheckCircle size={12} />}
+        {checking ? '检测中...' : '检测连通性'}
+      </button>
+      {result && (
+        <span className={`flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-1 rounded-full border ${
+          result.healthy
+            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 border-emerald-100 dark:border-emerald-800/30'
+            : 'bg-red-50 dark:bg-red-900/20 text-red-600 border-red-100 dark:border-red-800/30'
+        }`}>
+          {result.healthy ? <><CheckCircle size={10} /> 可用</> : <><AlertTriangle size={10} /> {result.error || '不可用'}</>}
+        </span>
+      )}
+    </div>
   );
 }
 

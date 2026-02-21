@@ -80,7 +80,7 @@ export default function Skills() {
     const newEnabled = !skill.enabled;
     setSkills(prev => prev.map(s => s.id === id ? { ...s, enabled: newEnabled } : s));
     try {
-      await api.updatePlugin(id, { enabled: newEnabled });
+      await api.toggleSkill(id, newEnabled);
       setMsg(`${skill.name} ${newEnabled ? t.common.enabled : t.common.disabled}`);
       setTimeout(() => setMsg(''), 2000);
     } catch {
@@ -226,35 +226,31 @@ export default function Skills() {
           ) : (
             <div className="grid gap-3">
               {filtered.map(skill => (
-                <div key={skill.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 flex items-center gap-4 hover:shadow-md transition-all group">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${skill.enabled ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                    <Sparkles size={20} className={skill.enabled ? 'text-white' : 'text-gray-400'} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-base font-bold text-gray-900 dark:text-white">{skill.name}</span>
-                      {skill.version && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 font-mono">v{skill.version}</span>}
-                      {getSourceBadge(skill.source)}
+                <div key={skill.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${skill.enabled ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                      <Sparkles size={18} className={skill.enabled ? 'text-white' : 'text-gray-400'} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{skill.name}</span>
+                        {skill.version && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 font-mono shrink-0">v{skill.version}</span>}
+                        {getSourceBadge(skill.source)}
+                      </div>
+                      {skill.description && <p className="text-xs text-gray-500 truncate mt-0.5">{skill.description}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
                       {skill.requires && (skill.requires.env || skill.requires.bins) && (
-                        <button onClick={() => setConfigSkill(skill)} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 border border-amber-100 dark:border-amber-800 hover:bg-amber-100 transition-colors">
+                        <button onClick={() => setConfigSkill(skill)} className="text-[10px] px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 border border-amber-100 dark:border-amber-800 hover:bg-amber-100 transition-colors shrink-0">
                           {t.skills.configRequired}
                         </button>
                       )}
+                      <button onClick={() => toggleSkill(skill.id)} className="relative group/toggle focus:outline-none shrink-0" title={skill.enabled ? t.common.running : t.common.stopped}>
+                        {skill.enabled 
+                          ? <ToggleRight size={36} className="text-emerald-500 transition-transform group-hover/toggle:scale-105" /> 
+                          : <ToggleLeft size={36} className="text-gray-300 dark:text-gray-600 transition-transform group-hover/toggle:scale-105" />}
+                      </button>
                     </div>
-                    {skill.description && <p className="text-xs text-gray-500 truncate">{skill.description}</p>}
-                  </div>
-                  <div className="flex items-center gap-4 border-l border-gray-100 dark:border-gray-700 pl-4">
-                    <div className="text-right hidden sm:block">
-                      <div className="text-[10px] text-gray-400">{t.common.status}</div>
-                      <div className={`text-xs font-medium ${skill.enabled ? 'text-emerald-600' : 'text-gray-400'}`}>
-                        {skill.enabled ? t.common.running : t.common.stopped}
-                      </div>
-                    </div>
-                    <button onClick={() => toggleSkill(skill.id)} className="relative group/toggle focus:outline-none">
-                      {skill.enabled 
-                        ? <ToggleRight size={32} className="text-emerald-500 transition-transform group-hover/toggle:scale-105" /> 
-                        : <ToggleLeft size={32} className="text-gray-300 dark:text-gray-600 transition-transform group-hover/toggle:scale-105" />}
-                    </button>
                   </div>
                 </div>
               ))}
@@ -278,32 +274,25 @@ export default function Skills() {
           ) : (
             <div className="grid gap-3">
               {plugins.map(plugin => (
-                <div key={plugin.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 flex items-center gap-4 hover:shadow-md transition-all group">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${plugin.enabled ? 'bg-gradient-to-br from-blue-500 to-cyan-600' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                    <Plug size={20} className={plugin.enabled ? 'text-white' : 'text-gray-400'} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-base font-bold text-gray-900 dark:text-white">{plugin.name}</span>
-                      {plugin.version && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 font-mono">v{plugin.version}</span>}
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${plugin.source === 'installed' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : plugin.source === 'config-ext' ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
-                        {plugin.source === 'installed' ? t.skills.srcInstalled : plugin.source === 'config-ext' ? t.skills.srcDevExt : t.skills.srcConfig}
-                      </span>
+                <div key={plugin.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${plugin.enabled ? 'bg-gradient-to-br from-blue-500 to-cyan-600' : 'bg-gray-100 dark:bg-gray-700'}`}>
+                      <Plug size={18} className={plugin.enabled ? 'text-white' : 'text-gray-400'} />
                     </div>
-                    {plugin.description && <p className="text-xs text-gray-500 truncate">{plugin.description}</p>}
-                    {plugin.path && <p className="text-[10px] text-gray-400 truncate mt-1 font-mono">{plugin.path}</p>}
-                  </div>
-                  <div className="flex items-center gap-4 border-l border-gray-100 dark:border-gray-700 pl-4">
-                    <div className="text-right hidden sm:block">
-                      <div className="text-[10px] text-gray-400">{t.common.status}</div>
-                      <div className={`text-xs font-medium ${plugin.enabled ? 'text-emerald-600' : 'text-gray-400'}`}>
-                        {plugin.enabled ? t.common.enabled : t.common.disabled}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{plugin.name}</span>
+                        {plugin.version && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 font-mono shrink-0">v{plugin.version}</span>}
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${plugin.source === 'installed' ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300' : plugin.source === 'config-ext' ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'}`}>
+                          {plugin.source === 'installed' ? t.skills.srcInstalled : plugin.source === 'config-ext' ? t.skills.srcDevExt : t.skills.srcConfig}
+                        </span>
                       </div>
+                      {plugin.description && <p className="text-xs text-gray-500 truncate mt-0.5">{plugin.description}</p>}
                     </div>
-                    <button onClick={() => togglePlugin(plugin.id)} className="relative group/toggle focus:outline-none">
+                    <button onClick={() => togglePlugin(plugin.id)} className="relative group/toggle focus:outline-none shrink-0 ml-2" title={plugin.enabled ? t.common.enabled : t.common.disabled}>
                       {plugin.enabled
-                        ? <ToggleRight size={32} className="text-emerald-500 transition-transform group-hover/toggle:scale-105" />
-                        : <ToggleLeft size={32} className="text-gray-300 dark:text-gray-600 transition-transform group-hover/toggle:scale-105" />}
+                        ? <ToggleRight size={36} className="text-emerald-500 transition-transform group-hover/toggle:scale-105" />
+                        : <ToggleLeft size={36} className="text-gray-300 dark:text-gray-600 transition-transform group-hover/toggle:scale-105" />}
                     </button>
                   </div>
                 </div>

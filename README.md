@@ -10,7 +10,7 @@
 
 [![License](https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-red?style=flat-square)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ready-brightgreen?style=flat-square&logo=docker&logoColor=white)](docker-compose.yml)
-[![Version](https://img.shields.io/badge/version-4.3.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
+[![Version](https://img.shields.io/badge/version-4.4.0-violet?style=flat-square)](https://github.com/zhaoxinyi02/ClawPanel/releases)
 [![Demo](https://img.shields.io/badge/demo-online-blue?style=flat-square&logo=vercel)](https://demo.zhaoxinyi.xyz)
 [![GitHub Stars](https://img.shields.io/github/stars/zhaoxinyi02/ClawPanel?style=flat-square&logo=github)](https://github.com/zhaoxinyi02/ClawPanel/stargazers)
 
@@ -28,7 +28,7 @@
 > This project is for **learning and research purposes only**. **Commercial use is strictly prohibited.** Use at your own risk. See [full disclaimer](DISCLAIMER.md).
 
 > [!NOTE]
-> **v4.3.0 技能 & 插件分离 · 修改密码 · 多语言 · 安装器**：技能和插件独立展示、管理后台支持修改登录密码、中英文切换、提供 Linux/Windows/macOS 原生安装方式。
+> **v4.4.0 AI 助手 · 模型兼容性修复 · UI 优化**：新增 AI 智能助手浮窗、修复非 OpenAI 模型（火山引擎/DeepSeek 等）的 `developer` 角色兼容性问题、技能中心布局优化。
 > 旧版本请查看 [v3.0.0 Tag](https://github.com/zhaoxinyi02/ClawPanel/releases/tag/v3.0.0)。
 
 > [!TIP]
@@ -114,6 +114,9 @@
 
 #### 📄 文档管理
 浏览和编辑 OpenClaw 目录下的 Markdown 文档，内置编辑器，一键保存。
+
+### 🤖 AI 智能助手
+右下角浮窗式 AI 对话助手，支持拖拽移动、调整大小、最大化/还原，可选择不同模型提供商和模型进行实时对话。深色模式适配。
 
 ### 📁 工作区
 文件浏览器：查看、编辑、创建 OpenClaw 工作区文件。
@@ -342,6 +345,14 @@ OPENCLAW_APP=/path/to/openclaw/app  # OpenClaw 应用目录
 </details>
 
 ## 📋 更新日志
+
+### v4.4.0 — AI 助手 · 模型兼容性修复 · UI 优化 (2026-02-21)
+- 🆕 **AI 智能助手**：右下角浮窗式 AI 对话助手，支持拖拽移动、调整大小、最大化/还原，可选择不同模型提供商和模型进行对话
+- 🔧 **模型兼容性修复**：修复非 OpenAI 模型（火山引擎 Doubao、DeepSeek 等）因发送 `developer` 角色导致的 "Message ordering conflict" 错误，自动为非 OpenAI 提供商注入 `compat.supportsDeveloperRole=false` 并设置 `reasoning=false`
+- 🔧 **pi-ai 运行时补丁**：直接修补 `@mariozechner/pi-ai` 库的 `openai-completions.js`，强制使用 `system` 角色替代 `developer`，确保所有 OpenAI 兼容 API 提供商正常工作
+- 🔧 **技能中心布局优化**：技能和插件卡片的启用/禁用开关按钮始终可见，无需水平滚动
+- 🔧 **会话自动清理**：配置保存和网关重启时自动清理旧会话文件，防止会话冲突
+- 🎨 **AI 助手 UI**：支持最大化/还原切换、拖拽定位、边缘吸附、深色模式适配
 
 ### v4.3.0 — 技能插件分离 · 修改密码 · 多语言 · 安装器 (2026-02-19)
 - 🆕 **技能/插件分离**：技能中心拆分为「技能」「插件」「ClawHub 商店」三个标签页，插件不再混入技能列表

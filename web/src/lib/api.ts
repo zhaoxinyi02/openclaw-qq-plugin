@@ -20,6 +20,15 @@ async function post(path: string, body?: any) {
   return res.json();
 }
 
+async function postLong(path: string, body?: any, timeoutMs = 120000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(BASE + path, { method: 'POST', headers: headers(), body: body ? JSON.stringify(body) : undefined, signal: controller.signal });
+    return res.json();
+  } finally { clearTimeout(timer); }
+}
+
 async function put(path: string, body?: any) {
   const res = await fetch(BASE + path, { method: 'PUT', headers: headers(), body: body ? JSON.stringify(body) : undefined });
   return res.json();
@@ -118,6 +127,12 @@ const _api = {
   getAdminToken: () => get('/system/admin-token'),
   getSudoPassword: () => get('/system/sudo-password'),
   setSudoPassword: (password: string) => put('/system/sudo-password', { password }),
+  // Skill toggle
+  toggleSkill: (id: string, enabled: boolean) => put(`/system/skills/${id}/toggle`, { enabled }),
+  // Model health check
+  checkModelHealth: (baseUrl: string, apiKey: string, apiType: string, modelId?: string) => post('/system/model-health', { baseUrl, apiKey, apiType, modelId }),
+  // AI Assistant chat
+  aiChat: (messages: { role: string; content: string }[], providerId?: string, modelId?: string) => postLong('/system/ai-chat', { messages, providerId, modelId }, 120000),
   // Event Log
   getEvents: (opts?: { limit?: number; offset?: number; source?: string; search?: string }) => {
     const params = new URLSearchParams();

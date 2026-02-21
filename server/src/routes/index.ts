@@ -135,12 +135,64 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
       // cron.jobs belong in cron/jobs.json, not in openclaw.json
       if (cfg.cron?.jobs) delete cfg.cron.jobs;
       if (cfg.cron && Object.keys(cfg.cron).length === 0) delete cfg.cron;
+      // Auto-inject compat.supportsDeveloperRole=false for non-OpenAI providers
+      // OpenClaw sends "developer" role (OpenAI-specific) which breaks Volcengine, DeepSeek, etc.
+      const providers = cfg?.models?.providers;
+      if (providers && typeof providers === 'object') {
+        for (const [, prov] of Object.entries(providers) as [string, any][]) {
+          const base = (prov?.baseUrl || '').toLowerCase();
+          const isNativeOpenAI = base.includes('api.openai.com');
+          if (!isNativeOpenAI && Array.isArray(prov?.models)) {
+            for (const m of prov.models) {
+              if (m && typeof m === 'object') {
+                if (!m.compat) m.compat = {};
+                m.compat.supportsDeveloperRole = false;
+              }
+            }
+          }
+        }
+      }
       openclawConfig.write(cfg);
+      // Also patch the runtime models.json that OpenClaw actually reads
+      patchModelsJsonCompat();
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ ok: false, error: String(err) });
     }
   });
+
+  // Patch OpenClaw's runtime models.json to add compat.supportsDeveloperRole=false
+  // OpenClaw generates models.json from openclaw.json but strips the compat field,
+  // so we must patch it directly after every config save / gateway restart.
+  function patchModelsJsonCompat() {
+    try {
+      const ocDir = process.env['OPENCLAW_CONFIG'] ? path.dirname(process.env['OPENCLAW_CONFIG']) : '/root/.openclaw';
+      const modelsPath = path.join(ocDir, 'agents', 'main', 'agent', 'models.json');
+      if (!fs.existsSync(modelsPath)) return;
+      const data = JSON.parse(fs.readFileSync(modelsPath, 'utf-8'));
+      let changed = false;
+      for (const [, prov] of Object.entries(data?.providers || {}) as [string, any][]) {
+        const base = (prov?.baseUrl || '').toLowerCase();
+        const isNativeOpenAI = base.includes('api.openai.com');
+        if (!isNativeOpenAI && Array.isArray(prov?.models)) {
+          for (const m of prov.models) {
+            if (m && typeof m === 'object') {
+              if (!m.compat || m.compat.supportsDeveloperRole !== false) {
+                if (!m.compat) m.compat = {};
+                m.compat.supportsDeveloperRole = false;
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+      if (changed) fs.writeFileSync(modelsPath, JSON.stringify(data, null, 2));
+    } catch {}
+  }
+
+  // Run patch on startup and periodically (OpenClaw may regenerate models.json)
+  patchModelsJsonCompat();
+  setInterval(patchModelsJsonCompat, 5000);
 
   router.get('/openclaw/models', auth, (_req, res) => {
     res.json({ ok: true, ...openclawConfig.getModels() });
@@ -967,6 +1019,7 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
       const pluginEntries = ocConfig?.plugins?.entries || {};
       const pluginInstalls = ocConfig?.plugins?.installs || {};
       const pluginSeen = new Set<string>();
+      const skillBlocklist = new Set<string>(ocConfig?.skills?.blocklist || []);
 
       // --- PLUGINS: scan extensions directories ---
       const extDir = path.join(OPENCLAW_DIR, 'extensions');
@@ -1070,7 +1123,7 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
             name: skillName,
             description: skillDesc,
             version: pkgInfo.version || '',
-            enabled: true,
+            enabled: !skillBlocklist.has(name),
             source,
             path: skillPath,
             metadata,
@@ -1117,7 +1170,7 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
             name: friendlyName,
             description: `工作区脚本: ${name}`,
             version: '',
-            enabled: true,
+            enabled: !skillBlocklist.has(scriptId),
             source: 'script',
             path: scriptPath,
           });
@@ -1325,6 +1378,8 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
 
   router.post('/system/restart-gateway', auth, async (_req, res) => {
     try {
+      // Patch models.json before restart so OpenClaw picks up compat flags
+      patchModelsJsonCompat();
       fs.writeFileSync(RESTART_SIGNAL, JSON.stringify({ requestedAt: new Date().toISOString() }));
       res.json({ ok: true, message: '网关重启请求已发送' });
     } catch (err) {
@@ -1437,6 +1492,198 @@ export function createRoutes(adminConfig: AdminConfig, onebotClient: OneBotClien
   });
 
   // === Event Log API ===
+  // Toggle skill enabled/disabled in openclaw.json skills.allowlist / skills.blocklist
+  router.put('/system/skills/:id/toggle', auth, (req, res) => {
+    try {
+      const { id } = req.params;
+      const { enabled } = req.body;
+      const config = openclawConfig.read();
+      if (!config) return res.status(500).json({ ok: false, error: 'Cannot read config' });
+      
+      if (!config.skills) config.skills = {};
+      if (!config.skills.blocklist) config.skills.blocklist = [];
+      
+      if (enabled) {
+        // Remove from blocklist
+        config.skills.blocklist = config.skills.blocklist.filter((s: string) => s !== id);
+      } else {
+        // Add to blocklist
+        if (!config.skills.blocklist.includes(id)) {
+          config.skills.blocklist.push(id);
+        }
+      }
+      openclawConfig.write(config);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: String(err) });
+    }
+  });
+
+  // Model health check — test if API key + baseUrl works
+  router.post('/system/model-health', auth, async (req, res) => {
+    try {
+      const { baseUrl, apiKey, apiType, modelId } = req.body;
+      if (!baseUrl || !apiKey) return res.status(400).json({ ok: false, error: 'baseUrl and apiKey required' });
+      
+      const testModel = modelId || 'gpt-4o';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      let url = baseUrl;
+      let body: any;
+      
+      if (apiType === 'anthropic') {
+        headers['x-api-key'] = apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+        url = baseUrl.replace(/\/+$/, '') + '/messages';
+        body = JSON.stringify({ model: testModel, max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] });
+      } else if (apiType === 'google-genai') {
+        url = baseUrl.replace(/\/+$/, '') + `/models/${testModel}:generateContent?key=${apiKey}`;
+        body = JSON.stringify({ contents: [{ parts: [{ text: 'hi' }] }], generationConfig: { maxOutputTokens: 5 } });
+      } else {
+        // OpenAI-compatible
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        url = baseUrl.replace(/\/+$/, '') + '/chat/completions';
+        body = JSON.stringify({ model: testModel, max_tokens: 5, messages: [{ role: 'user', content: 'hi' }] });
+      }
+      
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      
+      const response = await fetch(url, { method: 'POST', headers, body, signal: controller.signal });
+      clearTimeout(timeout);
+      
+      const text = await response.text();
+      let data: any;
+      try { data = JSON.parse(text); } catch { data = { raw: text.slice(0, 500) }; }
+      
+      if (response.ok) {
+        res.json({ ok: true, healthy: true, status: response.status, latencyMs: 0 });
+      } else {
+        res.json({ ok: true, healthy: false, status: response.status, error: data?.error?.message || data?.message || text.slice(0, 200) });
+      }
+    } catch (err: any) {
+      res.json({ ok: true, healthy: false, error: err.message || String(err) });
+    }
+  });
+
+  // AI Assistant chat proxy — forward to configured model provider
+  router.post('/system/ai-chat', auth, async (req, res) => {
+    try {
+      const { messages, providerId, modelId } = req.body;
+      if (!messages?.length) return res.status(400).json({ ok: false, error: 'messages required' });
+      
+      const config = openclawConfig.read();
+      const providers = config?.models?.providers || {};
+      
+      // Find provider — use specified or primary model's provider
+      let pid = providerId;
+      let mid = modelId;
+      if (!pid || !mid) {
+        const primary = config?.agents?.defaults?.model?.primary || '';
+        const parts = primary.split('/');
+        if (parts.length >= 2) {
+          pid = pid || parts[0];
+          mid = mid || parts.slice(1).join('/');
+        }
+      }
+      
+      const provider = providers[pid];
+      if (!provider) return res.status(400).json({ ok: false, error: `Provider "${pid}" not found` });
+      
+      const baseUrl = provider.baseUrl?.replace(/\/+$/, '');
+      const apiKey = provider.apiKey;
+      const apiType = provider.api || 'openai-completions';
+      
+      if (!baseUrl || !apiKey) return res.status(400).json({ ok: false, error: 'Provider missing baseUrl or apiKey' });
+      
+      const reqHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+      let url: string;
+      let body: string;
+      
+      // System prompt for the AI assistant
+      const systemPrompt = `你是 ClawPanel 管理后台的 AI 助手。ClawPanel 是一个开源的 OpenClaw 智能助手管理面板。
+
+当前你正在使用的模型信息：
+- 服务商 (Provider ID): ${pid}
+- 模型 (Model ID): ${mid}
+- API 类型: ${apiType}
+
+你的职责：
+1. 帮助用户理解和使用 ClawPanel 管理后台的各项功能
+2. 解答关于 OpenClaw 配置、技能、插件、通道管理等问题
+3. 帮助排查错误和问题
+4. 提供操作建议和最佳实践
+
+项目信息：
+- GitHub: https://github.com/zhaoxinyi02/ClawPanel
+- 技术栈: React + TypeScript + Vite (前端), Express + TypeScript (后端)
+- 配置文件: ~/.openclaw/openclaw.json
+- 支持的通道: QQ (NapCat), 微信, 飞书, 钉钉, 企业微信, Telegram, Discord 等
+- 技能系统: 支持 65+ 内置技能和自定义技能
+- 模型配置: 支持 OpenAI, Anthropic, Google, DeepSeek, 硅基流动, 火山引擎等
+
+重要说明：
+- ClawPanel 的 AI 助手（也就是你）和 OpenClaw 的主模型是独立的。
+- 用户在「设置 → 模型配置」中修改主模型后，需要点击「保存所有配置」，然后重启 OpenClaw 网关才能让 OpenClaw 使用新模型。
+- 但 AI 助手（你）会立即使用用户在助手设置中选择的模型，或者使用主模型。
+
+回答要简洁、准确、友好。使用 Markdown 格式回答，包括代码块、列表、加粗等。如果不确定，建议用户查看 GitHub 仓库的文档或 Issues。`;
+      
+      const fullMessages = [{ role: 'system', content: systemPrompt }, ...messages];
+      
+      if (apiType === 'anthropic') {
+        reqHeaders['x-api-key'] = apiKey;
+        reqHeaders['anthropic-version'] = '2023-06-01';
+        url = baseUrl + '/messages';
+        const sysMsg = fullMessages.find((m: any) => m.role === 'system');
+        const nonSys = fullMessages.filter((m: any) => m.role !== 'system');
+        body = JSON.stringify({ model: mid, max_tokens: 2048, system: sysMsg?.content || '', messages: nonSys });
+      } else if (apiType === 'google-genai') {
+        url = baseUrl + `/models/${mid}:generateContent?key=${apiKey}`;
+        const contents = fullMessages.filter((m: any) => m.role !== 'system').map((m: any) => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
+        body = JSON.stringify({
+          systemInstruction: { parts: [{ text: fullMessages.find((m: any) => m.role === 'system')?.content || '' }] },
+          contents,
+          generationConfig: { maxOutputTokens: 2048 }
+        });
+      } else {
+        reqHeaders['Authorization'] = `Bearer ${apiKey}`;
+        url = baseUrl + '/chat/completions';
+        body = JSON.stringify({ model: mid, max_tokens: 2048, messages: fullMessages });
+      }
+      
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+      
+      const response = await fetch(url, { method: 'POST', headers: reqHeaders, body, signal: controller.signal });
+      clearTimeout(timeout);
+      
+      const text = await response.text();
+      let data: any;
+      try { data = JSON.parse(text); } catch { return res.status(500).json({ ok: false, error: 'Invalid response from model' }); }
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ ok: false, error: data?.error?.message || data?.message || 'API error' });
+      }
+      
+      // Extract reply based on API type
+      let reply = '';
+      if (apiType === 'anthropic') {
+        reply = data?.content?.[0]?.text || '';
+      } else if (apiType === 'google-genai') {
+        reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } else {
+        reply = data?.choices?.[0]?.message?.content || '';
+      }
+      
+      res.json({ ok: true, reply });
+    } catch (err: any) {
+      res.status(500).json({ ok: false, error: err.message || String(err) });
+    }
+  });
+
   if (eventLog) {
     router.get('/events', auth, (req: any, res: any) => {
       const limit = parseInt(req.query.limit) || 100;
