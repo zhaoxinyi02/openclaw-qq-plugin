@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../lib/api';
-import { Radio, Wifi, WifiOff, QrCode, Key, Zap, UserCheck, Check, X, Power, Loader2, RefreshCw, LogOut, Sparkles } from 'lucide-react';
+import { Radio, Wifi, WifiOff, QrCode, Key, Zap, UserCheck, Check, X, Power, Loader2, RefreshCw, LogOut, Sparkles, Download, Package } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 type ChannelDef = {
@@ -176,6 +176,27 @@ export default function Channels() {
   const [loginPwd, setLoginPwd] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginMsg, setLoginMsg] = useState('');
+  const [softwareList, setSoftwareList] = useState<any[]>([]);
+  const [installingSw, setInstallingSw] = useState<string | null>(null);
+
+  const loadSoftware = () => {
+    api.getSoftwareList().then(r => { if (r.ok) setSoftwareList(r.software || []); }).catch(() => {});
+  };
+
+  const handleInstallContainer = async (id: string) => {
+    setInstallingSw(id);
+    try {
+      const r = await api.installSoftware(id);
+      if (r.ok) setMsg(`✅ ${id} 安装任务已创建，请在消息中心查看进度`);
+      else setMsg(`❌ ${r.error || '安装失败'}`);
+    } catch { setMsg('❌ 安装请求失败'); }
+    finally { setInstallingSw(null); setTimeout(() => { setMsg(''); loadSoftware(); }, 5000); }
+  };
+
+  const isContainerInstalled = (id: string) => {
+    const sw = softwareList.find(s => s.id === id);
+    return sw?.installed || false;
+  };
 
   const reload = () => {
     api.getStatus().then(r => { if (r.ok) setStatus(r); });
@@ -183,7 +204,7 @@ export default function Channels() {
     api.getRequests().then(r => { if (r.ok) setRequests(r.requests || []); });
   };
 
-  useEffect(() => { reload(); }, []);
+  useEffect(() => { reload(); loadSoftware(); }, []);
 
   const ocChannels = ocConfig?.channels || {};
   const ocPlugins = ocConfig?.plugins?.entries || {};
@@ -303,8 +324,12 @@ export default function Channels() {
       if (r.ok && r.data) {
         const list = Array.isArray(r.data) ? r.data : (r.data.QuickLoginList || r.data.quickLoginList || []);
         setQuickList(list.map((item: any) => typeof item === 'string' ? item : item.uin || String(item)));
-        if (list.length === 0 && (r.message?.includes('Logined') || r.data?.message?.includes('Logined'))) {
-          setLoginMsg('QQ 已登录，无需重复登录');
+        if (list.length === 0) {
+          if (r.message?.includes('Logined') || r.data?.message?.includes('Logined')) {
+            setLoginMsg('QQ 已登录，无需重复登录');
+          } else {
+            setLoginMsg('没有可用的快速登录账号，请先使用扫码登录一次');
+          }
         }
       } else { setLoginMsg(r.message || r.error || '获取快速登录列表失败'); }
     } catch (err) { setLoginMsg('获取快速登录列表失败: ' + String(err)); }
@@ -337,18 +362,31 @@ export default function Channels() {
   };
 
   const handleQQLogout = async () => {
-    if (!confirm('确定要退出当前QQ登录？退出后需要重新扫码或快速登录。')) return;
+    if (!confirm('确定要退出当前QQ登录？将重启 NapCat 容器，需要重新扫码登录。')) return;
     setLoginLoading(true); setLoginMsg('');
     try {
       const r = await api.napcatLogout();
       if (r.ok) {
-        setMsg('QQ 已退出登录，容器正在重启...');
-        setTimeout(() => { reload(); setMsg(''); }, 5000);
+        setMsg('QQ 正在退出登录，NapCat 容器重启中，请等待约 30 秒后重新扫码...');
+        setTimeout(() => { reload(); setMsg(''); }, 15000);
       } else {
         setMsg(r.error || '退出登录失败');
       }
     } catch (err) { setMsg('退出登录失败: ' + String(err)); }
-    finally { setLoginLoading(false); setTimeout(() => setMsg(''), 5000); }
+    finally { setLoginLoading(false); setTimeout(() => setMsg(''), 15000); }
+  };
+
+  const handleRestartNapcat = async () => {
+    if (!confirm('确定要重启 NapCat 容器？重启期间 QQ 将暂时离线。')) return;
+    try {
+      const r = await api.napcatRestart();
+      if (r.ok) {
+        setMsg('NapCat 容器正在重启，请等待约 30 秒...');
+        setTimeout(() => { reload(); setMsg(''); }, 15000);
+      } else {
+        setMsg(r.error || '重启失败');
+      }
+    } catch (err) { setMsg('重启失败: ' + String(err)); }
   };
 
   const handleApprove = async (flag: string) => {
@@ -448,7 +486,41 @@ export default function Channels() {
 
         {/* Channel config */}
         <div className="lg:col-span-3 space-y-6">
-          {currentDef && (
+          {/* Container not installed overlay for QQ/WeChat */}
+          {currentDef && ((currentDef.id === 'qq' && !isContainerInstalled('napcat')) || (currentDef.id === 'wechat' && !isContainerInstalled('wechat'))) && softwareList.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <Package size={32} className="text-gray-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  {currentDef.id === 'qq' ? 'NapCat (QQ个人号)' : '微信机器人'} 未安装
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {currentDef.id === 'qq'
+                    ? '需要安装 NapCat Docker 容器才能使用 QQ 个人号通道。安装后将自动配置 OneBot11 WebSocket 协议。'
+                    : '需要安装 wechatbot-webhook Docker 容器才能使用微信个人号通道。安装后将自动配置回调地址。'}
+                </p>
+              </div>
+              {!isContainerInstalled('docker') ? (
+                <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-4 py-2 inline-block">
+                  ⚠️ 需要先安装 Docker，请前往 系统配置 → 运行环境 安装
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleInstallContainer(currentDef.id === 'qq' ? 'napcat' : 'wechat')}
+                  disabled={installingSw !== null}
+                  className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-all shadow-lg shadow-violet-200 dark:shadow-none hover:shadow-xl"
+                >
+                  {installingSw ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                  {installingSw ? '安装中...' : '一键安装'}
+                </button>
+              )}
+              <p className="text-[11px] text-gray-400">安装进度可在左下角「消息中心」实时查看</p>
+            </div>
+          )}
+
+          {currentDef && !((currentDef.id === 'qq' && !isContainerInstalled('napcat') && softwareList.length > 0) || (currentDef.id === 'wechat' && !isContainerInstalled('wechat') && softwareList.length > 0)) && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-6 space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-4">
@@ -497,9 +569,14 @@ export default function Channels() {
                         </button>
                       )}
                       {currentDef.id === 'qq' && (
-                        <button onClick={handleQQLogout} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
-                          <LogOut size={14} />{t.channels.logoutQQ}
-                        </button>
+                        <>
+                          <button onClick={handleQQLogout} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
+                            <LogOut size={14} />{t.channels.logoutQQ}
+                          </button>
+                          <button onClick={handleRestartNapcat} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors">
+                            <RefreshCw size={14} />重启NapCat
+                          </button>
+                        </>
                       )}
                     </div>
                   )}

@@ -224,10 +224,10 @@ export default function Skills() {
               <p className="text-sm">{t.skills.noMatch}</p>
             </div>
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-3 overflow-hidden">
               {filtered.map(skill => (
-                <div key={skill.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-all group">
-                  <div className="flex items-center gap-3">
+                <div key={skill.id} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/50 hover:shadow-md transition-all group overflow-hidden">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${skill.enabled ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : 'bg-gray-100 dark:bg-gray-700'}`}>
                       <Sparkles size={18} className={skill.enabled ? 'text-white' : 'text-gray-400'} />
                     </div>

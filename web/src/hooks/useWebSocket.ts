@@ -25,6 +25,7 @@ export function useWebSocket() {
   const [napcatStatus, setNapcatStatus] = useState<any>(IS_DEMO ? DEMO_NAPCAT_STATUS : { connected: false });
   const [wechatStatus, setWechatStatus] = useState<any>(IS_DEMO ? DEMO_WECHAT_STATUS : { connected: false });
   const [openclawStatus, setOpenclawStatus] = useState<any>({});
+  const [wsMessages, setWsMessages] = useState<any[]>([]);
 
   // Fetch initial status and event log from API
   useEffect(() => {
@@ -47,7 +48,7 @@ export function useWebSocket() {
       return;
     }
     api.getEvents({ limit: 200 }).then(r => {
-      if (r.ok && r.entries) setLogEntries(r.entries);
+      if (r.ok && (r.events || r.entries)) setLogEntries(r.events || r.entries);
     }).catch(() => {});
   }, []);
 
@@ -103,6 +104,8 @@ export function useWebSocket() {
           setNapcatStatus(msg.data);
         } else if (msg.type === 'wechat-status') {
           setWechatStatus(msg.data);
+        } else if (msg.type === 'task_update' || msg.type === 'task_log') {
+          setWsMessages(prev => [...prev.slice(-100), msg]);
         }
       } catch {}
     };
@@ -121,9 +124,9 @@ export function useWebSocket() {
       return;
     }
     api.getEvents({ limit: 200 }).then(r => {
-      if (r.ok && r.entries) setLogEntries(r.entries);
+      if (r.ok && (r.events || r.entries)) setLogEntries(r.events || r.entries);
     }).catch(() => {});
   }, []);
 
-  return { events, logEntries, napcatStatus, wechatStatus, openclawStatus, clearEvents, refreshLog };
+  return { events, logEntries, napcatStatus, wechatStatus, openclawStatus, wsMessages, clearEvents, refreshLog };
 }

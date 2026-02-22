@@ -1,16 +1,45 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ScrollText, Radio, Sparkles, Clock, Settings,
-  Moon, Sun, LogOut, Menu, FolderOpen, Cat, Languages,
+  Moon, Sun, LogOut, Menu, FolderOpen, Cat, Languages, MessageSquare,
+  RotateCw, RefreshCw, Power,
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import AIAssistant from './AIAssistant';
+import MessageCenter, { TaskInfo } from './MessageCenter';
+import { api } from '../lib/api';
 
-interface Props { onLogout: () => void; napcatStatus: any; wechatStatus?: any; openclawStatus?: any; }
+interface Props { onLogout: () => void; napcatStatus: any; wechatStatus?: any; openclawStatus?: any; wsMessages?: any[]; }
 
-export default function Layout({ onLogout, napcatStatus, wechatStatus, openclawStatus }: Props) {
+export default function Layout({ onLogout, napcatStatus, wechatStatus, openclawStatus, wsMessages }: Props) {
   const { t, locale, setLocale } = useI18n();
+  const [tasks, setTasks] = useState<TaskInfo[]>([]);
+  const [taskLogs, setTaskLogs] = useState<Record<string, string[]>>({});
+
+  const loadTasks = useCallback(async () => {
+    try { const r = await api.getTasks(); if (r.ok) setTasks(r.tasks || []); } catch {}
+  }, []);
+
+  useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  // Listen for WebSocket task events
+  useEffect(() => {
+    if (!wsMessages || wsMessages.length === 0) return;
+    const last = wsMessages[wsMessages.length - 1];
+    if (last?.type === 'task_update') {
+      setTasks(prev => {
+        const idx = prev.findIndex(t => t.id === last.task.id);
+        if (idx >= 0) { const n = [...prev]; n[idx] = { ...n[idx], ...last.task }; return n; }
+        return [last.task, ...prev];
+      });
+    } else if (last?.type === 'task_log') {
+      setTaskLogs(prev => ({
+        ...prev,
+        [last.taskId]: [...(prev[last.taskId] || []), last.line],
+      }));
+    }
+  }, [wsMessages]);
 
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: t.nav.dashboard },
@@ -18,6 +47,7 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus, openclawS
     { to: '/channels', icon: Radio, label: t.nav.channels },
     { to: '/skills', icon: Sparkles, label: t.nav.skills },
     { to: '/cron', icon: Clock, label: t.nav.cronJobs },
+    { to: '/sessions', icon: MessageSquare, label: '会话管理' },
     { to: '/workspace', icon: FolderOpen, label: t.nav.workspace },
     { to: '/config', icon: Settings, label: t.nav.systemConfig },
   ];
@@ -120,12 +150,37 @@ export default function Layout({ onLogout, napcatStatus, wechatStatus, openclawS
 
         {/* Footer */}
         <div className="p-2 border-t border-gray-200 dark:border-gray-800 space-y-0.5">
+          <MessageCenter tasks={tasks} taskLogs={taskLogs} onRefresh={loadTasks} />
           <button onClick={toggleLocale} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full">
             <Languages size={16} />{locale === 'zh-CN' ? 'English' : '中文（简体）'}
           </button>
           <button onClick={toggleDark} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 w-full">
             {dark ? <Sun size={16} /> : <Moon size={16} />}{dark ? t.nav.lightMode : t.nav.darkMode}
           </button>
+          {/* Quick actions */}
+          <div className="flex items-center gap-1 px-1 py-1">
+            <button
+              onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 OpenClaw？' : 'Restart OpenClaw?')) return; try { await api.restartProcess(); } catch {} }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"
+              title={locale === 'zh-CN' ? '重启 OpenClaw' : 'Restart OpenClaw'}
+            >
+              <RotateCw size={13} /><span>OpenClaw</span>
+            </button>
+            <button
+              onClick={async () => { try { await api.restartGateway(); } catch {} }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+              title={locale === 'zh-CN' ? '重启网关' : 'Restart Gateway'}
+            >
+              <RefreshCw size={13} /><span>{locale === 'zh-CN' ? '网关' : 'Gateway'}</span>
+            </button>
+            <button
+              onClick={async () => { if (!confirm(locale === 'zh-CN' ? '确定重启 ClawPanel？页面将短暂断开。' : 'Restart ClawPanel? Page will briefly disconnect.')) return; try { await api.restartPanel(); setTimeout(() => window.location.reload(), 3000); } catch {} }}
+              className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 transition-colors"
+              title={locale === 'zh-CN' ? '重启面板' : 'Restart Panel'}
+            >
+              <Power size={13} /><span>{locale === 'zh-CN' ? '面板' : 'Panel'}</span>
+            </button>
+          </div>
           <button onClick={onLogout} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 w-full">
             <LogOut size={16} />{t.nav.logout}
           </button>

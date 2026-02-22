@@ -34,6 +34,11 @@ async function put(path: string, body?: any) {
   return res.json();
 }
 
+async function del(path: string) {
+  const res = await fetch(BASE + path, { method: 'DELETE', headers: headers() });
+  return res.json();
+}
+
 function authHeader() {
   const token = localStorage.getItem('admin-token');
   return token ? { 'Authorization': `Bearer ${token}` } : {};
@@ -78,6 +83,7 @@ const _api = {
   napcatPasswordLogin: (uin: string, password: string) => post('/napcat/password-login', { uin, password }),
   napcatLoginInfo: () => get('/napcat/login-info'),
   napcatLogout: () => post('/napcat/logout'),
+  napcatRestart: () => post('/napcat/restart'),
   toggleChannel: (channelId: string, enabled: boolean) => post('/openclaw/toggle-channel', { channelId, enabled }),
   // WeChat
   wechatStatus: () => get('/wechat/status'),
@@ -122,7 +128,9 @@ const _api = {
   checkUpdate: () => post('/system/check-update'),
   doUpdate: () => post('/system/do-update'),
   getUpdateStatus: () => get('/system/update-status'),
+  restartProcess: () => post('/process/restart'),
   restartGateway: () => post('/system/restart-gateway'),
+  restartPanel: () => post('/system/restart-panel'),
   getRestartGatewayStatus: () => get('/system/restart-gateway-status'),
   getAdminToken: () => get('/system/admin-token'),
   getSudoPassword: () => get('/system/sudo-password'),
@@ -143,6 +151,16 @@ const _api = {
     return get('/events?' + params.toString());
   },
   clearEvents: () => post('/events/clear'),
+  // Sessions
+  getSessions: (agent?: string) => get(`/sessions${agent ? '?agent=' + agent : ''}`),
+  getSessionDetail: (id: string, agent?: string) => get(`/sessions/${id}${agent ? '?agent=' + agent : ''}`),
+  deleteSession: (id: string, agent?: string) => del(`/sessions/${id}${agent ? '?agent=' + agent : ''}`),
+  // Software & Tasks
+  getSoftwareList: () => get('/software/list'),
+  getOpenClawInstances: () => get('/software/openclaw-instances'),
+  installSoftware: (software: string) => post('/software/install', { software }),
+  getTasks: () => get('/tasks'),
+  getTaskDetail: (id: string) => get(`/tasks/${id}`),
 };
 
 // In demo mode, replace all API calls with mock data

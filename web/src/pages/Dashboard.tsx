@@ -3,7 +3,7 @@ import { api } from '../lib/api';
 import {
   Wifi, Users, Cpu, Clock, RefreshCw,
   ChevronDown, ChevronRight, ArrowDown, Activity,
-  MemoryStick, Radio, TrendingUp,
+  MemoryStick, Radio, TrendingUp, AlertTriangle, Download, Brain, Loader2,
 } from 'lucide-react';
 import type { LogEntry } from '../hooks/useWebSocket';
 import { useI18n } from '../i18n';
@@ -86,8 +86,39 @@ export default function Dashboard({ ws }: DashboardProps) {
     }
   }
 
+  const [installingOC, setInstallingOC] = useState(false);
+  const handleInstallOpenClaw = async () => {
+    setInstallingOC(true);
+    try {
+      const r = await api.installSoftware('openclaw');
+      if (!r.ok) console.error(r.error);
+    } catch {}
+    finally { setInstallingOC(false); }
+  };
+
   return (
     <div className="space-y-6 h-full flex flex-col p-2">
+      {/* OpenClaw not installed banner */}
+      {status && !oc.configured && (
+        <div className="shrink-0 rounded-xl border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10 p-6 flex flex-col items-center gap-4 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <Brain size={28} className="text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">OpenClaw 尚未安装</h3>
+            <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+              ClawPanel 需要 OpenClaw AI 引擎才能正常工作。安装后即可配置模型、管理技能和连接通道。
+            </p>
+          </div>
+          <button onClick={handleInstallOpenClaw} disabled={installingOC}
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-all shadow-lg shadow-violet-200 dark:shadow-none">
+            {installingOC ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {installingOC ? '安装中...' : '一键安装 OpenClaw'}
+          </button>
+          <p className="text-[11px] text-gray-400">安装进度可在左下角「消息中心」实时查看</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="shrink-0 flex items-center justify-between">
         <div>

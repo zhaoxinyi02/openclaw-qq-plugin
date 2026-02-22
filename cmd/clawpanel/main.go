@@ -1,0 +1,286 @@
+package main
+
+import (
+	"embed"
+	"fmt"
+	"io"
+	"io/fs"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/gin-gonic/gin"
+	"github.com/zhaoxinyi02/ClawPanel/internal/config"
+	"github.com/zhaoxinyi02/ClawPanel/internal/handler"
+	"github.com/zhaoxinyi02/ClawPanel/internal/middleware"
+	"github.com/zhaoxinyi02/ClawPanel/internal/model"
+	"github.com/zhaoxinyi02/ClawPanel/internal/eventlog"
+	"github.com/zhaoxinyi02/ClawPanel/internal/process"
+	"github.com/zhaoxinyi02/ClawPanel/internal/taskman"
+	"github.com/zhaoxinyi02/ClawPanel/internal/websocket"
+)
+
+//go:embed all:frontend/dist
+var frontendFS embed.FS
+
+func main() {
+	// 加载配置
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("[ClawPanel] 配置加载失败: %v", err)
+	}
+
+	// 初始化数据库
+	db, err := model.InitDB(cfg.DataDir)
+	if err != nil {
+		log.Fatalf("[ClawPanel] 数据库初始化失败: %v", err)
+	}
+	defer db.Close()
+
+	// 初始化进程管理器
+	procMgr := process.NewManager(cfg)
+
+	// 初始化 WebSocket Hub
+	wsHub := websocket.NewHub()
+	go wsHub.Run()
+
+	// 初始化任务管理器
+	taskMgr := taskman.NewManager(wsHub)
+
+	// 初始化系统事件日志
+	sysLog := eventlog.NewSystemLogger(db, wsHub)
+	sysLog.Log("system", "panel.start", "ClawPanel 管理面板已启动")
+
+	// 启动 OneBot11 事件监听器 (监听 NapCat WebSocket 消息并记录到活动日志)
+	evListener := eventlog.NewListener(db, wsHub, "ws://127.0.0.1:3001")
+	evListener.Start()
+	defer evListener.Stop()
+
+	// 设置 Gin 模式
+	if cfg.Debug {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(middleware.Logger())
+	r.Use(middleware.CORS())
+
+	// API 路由组
+	api := r.Group("/api")
+	{
+		// 公开路由
+		api.POST("/auth/login", handler.Login(db, cfg))
+
+		// 需要认证的路由
+		auth := api.Group("")
+		auth.Use(middleware.Auth(cfg))
+		{
+			// 认证
+			auth.POST("/auth/change-password", handler.ChangePassword(db, cfg))
+
+			// 状态总览
+			auth.GET("/status", handler.GetStatus(db, cfg, procMgr))
+
+			// OpenClaw 配置
+			auth.GET("/openclaw/config", handler.GetOpenClawConfig(cfg))
+			auth.PUT("/openclaw/config", handler.SaveOpenClawConfig(cfg))
+			auth.GET("/openclaw/models", handler.GetModels(cfg))
+			auth.PUT("/openclaw/models", handler.SaveModels(cfg))
+			auth.GET("/openclaw/channels", handler.GetChannels(cfg))
+			auth.PUT("/openclaw/channels/:id", handler.SaveChannel(cfg))
+			auth.PUT("/openclaw/plugins/:id", handler.SavePlugin(cfg))
+			auth.POST("/openclaw/toggle-channel", handler.ToggleChannel(cfg, procMgr, sysLog))
+
+			// 进程管理
+			auth.POST("/process/start", handler.StartProcess(procMgr, sysLog))
+			auth.POST("/process/stop", handler.StopProcess(procMgr, sysLog))
+			auth.POST("/process/restart", handler.RestartProcess(procMgr, sysLog))
+			auth.GET("/process/status", handler.ProcessStatus(procMgr))
+
+			// 系统信息
+			auth.GET("/system/env", handler.GetSystemEnv(cfg))
+			auth.GET("/system/version", handler.GetVersion(cfg))
+			auth.POST("/system/backup", handler.Backup(cfg))
+			auth.GET("/system/backups", handler.ListBackups(cfg))
+			auth.POST("/system/restore", handler.Restore(cfg))
+			auth.POST("/system/restart-gateway", handler.RestartGateway(cfg))
+			auth.POST("/system/restart-panel", handler.RestartPanel())
+			auth.GET("/system/restart-gateway-status", handler.RestartGatewayStatus(cfg))
+
+			// 技能 & 插件
+			auth.GET("/system/skills", handler.GetSkills(cfg))
+			auth.PUT("/system/skills/:id/toggle", handler.ToggleSkill(cfg))
+
+			// 定时任务
+			auth.GET("/system/cron", handler.GetCronJobs(cfg))
+			auth.PUT("/system/cron", handler.SaveCronJobs(cfg))
+
+			// 文档管理
+			auth.GET("/system/docs", handler.GetDocs(cfg))
+			auth.PUT("/system/docs", handler.SaveDoc(cfg))
+			auth.GET("/system/identity-docs", handler.GetIdentityDocs(cfg))
+			auth.PUT("/system/identity-docs", handler.SaveIdentityDoc(cfg))
+
+			// 模型健康检查
+			auth.POST("/system/model-health", handler.ModelHealthCheck())
+
+			// AI 助手
+			auth.POST("/system/ai-chat", handler.AIChat(cfg))
+
+			// 更新
+			auth.POST("/system/check-update", handler.CheckUpdate(cfg))
+			auth.POST("/system/do-update", handler.DoUpdate(cfg))
+			auth.GET("/system/update-status", handler.UpdateStatus(cfg))
+
+			// 事件日志
+			auth.GET("/events", handler.GetEvents(db))
+			auth.POST("/events/clear", handler.ClearEvents(db))
+
+			// Admin 配置
+			auth.GET("/admin/config", handler.GetAdminConfig(cfg))
+			auth.PUT("/admin/config", handler.SaveAdminConfig(cfg))
+			auth.PUT("/admin/config/:section", handler.SaveAdminSection(cfg))
+
+			// Admin Token & Sudo Password
+			auth.GET("/system/admin-token", handler.GetAdminToken(cfg))
+			auth.GET("/system/sudo-password", handler.GetSudoPassword(cfg))
+			auth.PUT("/system/sudo-password", handler.SetSudoPassword(cfg))
+
+			// ClawHub 同步
+			auth.POST("/system/clawhub-sync", handler.ClawHubSync(cfg))
+
+			// Bot 操作
+			auth.GET("/bot/groups", handler.GetBotGroups(cfg))
+			auth.GET("/bot/friends", handler.GetBotFriends(cfg))
+			auth.POST("/bot/send", handler.BotSend(cfg))
+			auth.POST("/bot/reconnect", handler.BotReconnect(cfg))
+
+			// 请求审批
+			auth.GET("/requests", handler.GetRequests(cfg))
+			auth.POST("/requests/:flag/approve", handler.ApproveRequest(cfg))
+			auth.POST("/requests/:flag/reject", handler.RejectRequest(cfg))
+
+			// NapCat QQ 登录
+			auth.POST("/napcat/login-status", handler.NapcatLoginStatus(cfg))
+			auth.POST("/napcat/qrcode", handler.NapcatGetQRCode(cfg))
+			auth.POST("/napcat/qrcode/refresh", handler.NapcatRefreshQRCode(cfg))
+			auth.GET("/napcat/quick-login-list", handler.NapcatQuickLoginList(cfg))
+			auth.POST("/napcat/quick-login", handler.NapcatQuickLogin(cfg))
+			auth.POST("/napcat/password-login", handler.NapcatPasswordLogin(cfg))
+			auth.GET("/napcat/login-info", handler.NapcatLoginInfo(cfg))
+			auth.POST("/napcat/logout", handler.NapcatLogout(cfg))
+			auth.POST("/napcat/restart", handler.RestartNapcat(cfg))
+
+			// WeChat
+			auth.GET("/wechat/status", handler.WechatStatus(cfg))
+			auth.GET("/wechat/login-url", handler.WechatLoginUrl(cfg))
+			auth.POST("/wechat/send", handler.WechatSend(cfg))
+			auth.POST("/wechat/send-file", handler.WechatSendFile(cfg))
+			auth.GET("/wechat/config", handler.WechatGetConfig(cfg))
+			auth.PUT("/wechat/config", handler.WechatUpdateConfig(cfg))
+
+			// 工作区
+			auth.GET("/workspace/files", handler.WorkspaceFiles(cfg))
+			auth.GET("/workspace/stats", handler.WorkspaceStats(cfg))
+			auth.GET("/workspace/config", handler.WorkspaceConfig(cfg))
+			auth.PUT("/workspace/config", handler.WorkspaceUpdateConfig(cfg))
+			auth.POST("/workspace/upload", handler.WorkspaceUpload(cfg))
+			auth.POST("/workspace/mkdir", handler.WorkspaceMkdir(cfg))
+			auth.POST("/workspace/delete", handler.WorkspaceDelete(cfg))
+			auth.POST("/workspace/clean", handler.WorkspaceClean(cfg))
+			auth.GET("/workspace/notes", handler.WorkspaceNotes(cfg))
+			auth.PUT("/workspace/notes", handler.WorkspaceSetNote(cfg))
+
+			// 会话管理
+			auth.GET("/sessions", handler.GetSessions(cfg))
+			auth.GET("/sessions/:id", handler.GetSessionDetail(cfg))
+			auth.DELETE("/sessions/:id", handler.DeleteSession(cfg))
+
+			// 软件环境 & 安装任务
+			auth.GET("/software/list", handler.GetSoftwareList(cfg))
+			auth.GET("/software/openclaw-instances", handler.DetectOpenClawInstances(cfg))
+			auth.POST("/software/install", handler.InstallSoftware(cfg, taskMgr))
+			auth.GET("/tasks", handler.GetTasks(taskMgr))
+			auth.GET("/tasks/:id", handler.GetTaskDetail(taskMgr))
+
+			// WebSocket 实时日志
+			auth.GET("/ws/logs", wsHub.HandleWebSocket())
+		}
+
+		// 工作区下载和预览（支持 token query param）
+		api.GET("/workspace/download", handler.WorkspaceDownload(cfg))
+		api.GET("/workspace/preview", handler.WorkspacePreview(cfg))
+
+		// 外部日志接口（无需认证）
+		api.POST("/events/log", handler.PostEvent(db))
+	}
+
+	// WebSocket 路由（前端连接 /ws?token=...）
+	r.GET("/ws", wsHub.HandleWebSocket())
+
+	// 内嵌前端静态资源
+	frontendDist, err := fs.Sub(frontendFS, "frontend/dist")
+	if err != nil {
+		log.Fatalf("[ClawPanel] 前端资源加载失败: %v", err)
+	}
+	// SPA fallback: 所有非 API 路由返回 index.html
+	staticFS := http.FS(frontendDist)
+	r.NoRoute(func(c *gin.Context) {
+		urlPath := c.Request.URL.Path
+
+		// 尝试提供静态文件（仅当路径包含扩展名时，如 .js .css .png）
+		if strings.Contains(urlPath, ".") {
+			f, err := staticFS.Open(urlPath)
+			if err == nil {
+				defer f.Close()
+				stat, _ := f.Stat()
+				if !stat.IsDir() {
+					http.ServeContent(c.Writer, c.Request, urlPath, stat.ModTime(), f)
+					return
+				}
+			}
+		}
+
+		// SPA fallback: 所有其他路由返回 index.html
+		indexData, err := frontendDist.Open("index.html")
+		if err != nil {
+			c.String(404, "Not Found")
+			return
+		}
+		defer indexData.Close()
+		stat, _ := indexData.Stat()
+		c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+		http.ServeContent(c.Writer, c.Request, "index.html", stat.ModTime(), indexData.(io.ReadSeeker))
+	})
+
+	// 启动日志收集（将 OpenClaw 进程日志推送到 WebSocket）
+	go procMgr.StreamLogs(wsHub)
+
+	// 启动服务器
+	addr := fmt.Sprintf("0.0.0.0:%d", cfg.Port)
+	log.Printf("[ClawPanel] v5.0.0 启动中 → http://%s", addr)
+	log.Printf("[ClawPanel] 数据目录: %s", cfg.DataDir)
+	log.Printf("[ClawPanel] OpenClaw 目录: %s", cfg.OpenClawDir)
+
+	srv := &http.Server{Addr: addr, Handler: r}
+
+	// 优雅关闭
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+		log.Println("[ClawPanel] 正在关闭...")
+		procMgr.StopAll()
+		srv.Close()
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("[ClawPanel] 服务器启动失败: %v", err)
+	}
+}

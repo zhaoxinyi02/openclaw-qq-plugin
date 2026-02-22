@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useWebSocket } from './hooks/useWebSocket';
 import Layout from './components/Layout';
+import OpenClawRequired from './components/OpenClawRequired';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ActivityLog from './pages/ActivityLog';
@@ -9,6 +10,7 @@ import Channels from './pages/Channels';
 import Skills from './pages/Skills';
 import CronJobs from './pages/CronJobs';
 import SystemConfig from './pages/SystemConfig';
+import Sessions from './pages/Sessions';
 import Workspace from './pages/Workspace';
 
 export default function App() {
@@ -26,12 +28,13 @@ export default function App() {
 
   return (
     <Routes>
-      <Route element={<Layout onLogout={auth.logout} napcatStatus={ws.napcatStatus} wechatStatus={ws.wechatStatus} openclawStatus={ws.openclawStatus} />}>
+      <Route element={<Layout onLogout={auth.logout} napcatStatus={ws.napcatStatus} wechatStatus={ws.wechatStatus} openclawStatus={ws.openclawStatus} wsMessages={ws.wsMessages} />}>
         <Route path="/" element={<Dashboard ws={ws} />} />
         <Route path="/logs" element={<ActivityLog ws={ws} />} />
-        <Route path="/channels" element={<Channels />} />
-        <Route path="/skills" element={<Skills />} />
-        <Route path="/cron" element={<CronJobs />} />
+        <Route path="/channels" element={<OpenClawRequired configured={!!ws.openclawStatus?.configured}><Channels /></OpenClawRequired>} />
+        <Route path="/skills" element={<OpenClawRequired configured={!!ws.openclawStatus?.configured}><Skills /></OpenClawRequired>} />
+        <Route path="/cron" element={<OpenClawRequired configured={!!ws.openclawStatus?.configured}><CronJobs /></OpenClawRequired>} />
+        <Route path="/sessions" element={<OpenClawRequired configured={!!ws.openclawStatus?.configured}><Sessions /></OpenClawRequired>} />
         <Route path="/config" element={<SystemConfig />} />
         <Route path="/workspace" element={<Workspace />} />
       </Route>

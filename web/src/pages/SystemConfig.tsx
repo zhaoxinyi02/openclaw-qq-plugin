@@ -792,65 +792,7 @@ export default function SystemConfig() {
                 </div>
               </div>
               
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-6 space-y-4">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <HardDrive size={16} className="text-violet-500" /> 软件环境
-                </h3>
-                <div className="space-y-3">
-                  {[
-                    { name: 'Node.js', value: envInfo.software?.node, required: true },
-                    { name: 'Docker', value: envInfo.software?.docker, required: true },
-                    { name: 'Git', value: envInfo.software?.git, required: true },
-                    { name: 'OpenClaw', value: envInfo.software?.openclaw, required: true },
-                    { name: 'npm', value: envInfo.software?.npm, required: false },
-                    { name: 'Bun', value: envInfo.software?.bun, required: false },
-                    { name: 'Python', value: envInfo.software?.python, required: false },
-                  ].map(sw => {
-                    const installed = sw.value && !sw.value.includes('not installed') && !sw.value.includes('not found');
-                    return (
-                      <div key={sw.name} className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 transition-colors">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${installed ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-red-100 dark:bg-red-900/30 text-red-600'}`}>
-                          {installed ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
-                        </div>
-                        <div className="w-24">
-                          <span className="text-sm font-bold text-gray-900 dark:text-white">{sw.name}</span>
-                          {sw.required && <span className="block text-[10px] text-amber-600 dark:text-amber-500 font-medium">必需组件</span>}
-                        </div>
-                        <span className="text-xs text-gray-600 dark:text-gray-400 font-mono flex-1 truncate bg-white dark:bg-gray-800 px-2 py-1 rounded border border-gray-100 dark:border-gray-700">{sw.value || '未检测'}</span>
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded ${installed ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
-                          {installed ? '已安装' : '未安装'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              
-              <div className="bg-gradient-to-br from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20 rounded-xl border border-violet-100 dark:border-violet-800/30 p-6 space-y-3">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Command size={16} className="text-violet-600 dark:text-violet-400" /> 快速安装指南
-                </h3>
-                <div className="space-y-3 text-xs text-gray-600 dark:text-gray-300">
-                  <div>
-                    <strong className="block text-gray-900 dark:text-white mb-1">Docker:</strong> 
-                    <div className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg p-2 border border-violet-100 dark:border-violet-800/50 font-mono text-gray-600 dark:text-gray-400 select-all">
-                      curl -fsSL https://get.docker.com | sh
-                    </div>
-                  </div>
-                  <div>
-                    <strong className="block text-gray-900 dark:text-white mb-1">OpenClaw:</strong> 
-                    <div className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg p-2 border border-violet-100 dark:border-violet-800/50 font-mono text-gray-600 dark:text-gray-400 select-all">
-                      curl -fsSL https://get.openclaw.ai | bash
-                    </div>
-                  </div>
-                  <div>
-                    <strong className="block text-gray-900 dark:text-white mb-1">Node.js:</strong> 
-                    <div className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg p-2 border border-violet-100 dark:border-violet-800/50 font-mono text-gray-600 dark:text-gray-400 select-all">
-                      curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <SoftwareEnvironment envInfo={envInfo} onRefresh={loadEnv} />
             </>
           )}
         </div>
@@ -1249,5 +1191,113 @@ function CfgSection({ title, icon: Icon, fields, getVal, setVal }: {
         </div>
       )}
     </div>
+  );
+}
+
+function SoftwareEnvironment({ envInfo, onRefresh }: { envInfo: any; onRefresh: () => void }) {
+  const [installing, setInstalling] = useState<string | null>(null);
+  const [installMsg, setInstallMsg] = useState('');
+  const [swData, setSwData] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getSoftwareList().then(r => { if (r.ok) setSwData(r.software || []); }).catch(() => {});
+  }, []);
+
+  // Merge backend software data with envInfo for display
+  const getSw = (id: string) => swData.find(s => s.id === id);
+
+  const softwareList = [
+    { id: 'nodejs', name: 'Node.js', value: envInfo.software?.node, required: true, category: 'runtime', installable: true },
+    { id: 'npm', name: 'npm', value: envInfo.software?.npm, required: false, installable: false, category: 'runtime' },
+    { id: 'docker', name: 'Docker', value: envInfo.software?.docker, required: false, category: 'runtime', installable: true },
+    { id: 'git', name: 'Git', value: envInfo.software?.git, required: false, category: 'runtime', installable: true },
+    { id: 'python', name: 'Python 3', value: envInfo.software?.python, required: false, category: 'runtime', installable: true },
+    { id: 'openclaw', name: 'OpenClaw', value: envInfo.software?.openclaw, required: true, category: 'service', installable: true },
+    { id: 'napcat', name: getSw('napcat')?.name || 'NapCat (QQ个人号)', value: getSw('napcat')?.version || null, required: false, category: 'container', installable: true, status: getSw('napcat')?.status },
+    { id: 'wechat', name: getSw('wechat')?.name || '微信机器人', value: getSw('wechat')?.version || null, required: false, category: 'container', installable: true, status: getSw('wechat')?.status },
+  ];
+
+  const handleInstall = async (id: string) => {
+    setInstalling(id);
+    setInstallMsg('');
+    try {
+      const r = await api.installSoftware(id);
+      if (r.ok) {
+        setInstallMsg(`✅ ${id} 安装任务已创建，请在消息中心查看进度`);
+      } else {
+        setInstallMsg(`❌ ${r.error || '安装失败'}`);
+      }
+    } catch (err: any) {
+      setInstallMsg(`❌ ${err.message || '请求失败'}`);
+    } finally {
+      setInstalling(null);
+      setTimeout(() => { setInstallMsg(''); onRefresh(); }, 5000);
+    }
+  };
+
+  const categories = [
+    { key: 'runtime', label: '运行时环境', icon: Terminal },
+    { key: 'service', label: '核心服务', icon: Brain },
+    { key: 'container', label: '容器组件', icon: Box },
+  ];
+
+  return (
+    <>
+      {installMsg && (
+        <div className={`px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2 ${installMsg.includes('❌') ? 'bg-red-50 dark:bg-red-900/30 text-red-600' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600'}`}>
+          {installMsg}
+        </div>
+      )}
+      {categories.map(cat => {
+        const items = softwareList.filter(s => s.category === cat.key);
+        if (items.length === 0) return null;
+        return (
+          <div key={cat.key} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 p-6 space-y-4">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <cat.icon size={16} className="text-violet-500" /> {cat.label}
+            </h3>
+            <div className="space-y-3">
+              {items.map(sw => {
+                const installed = (sw.value && !sw.value.includes('not installed') && !sw.value.includes('not found')) || sw.status === 'running' || sw.status === 'exited';
+                const isRunning = sw.status === 'running';
+                const installable = sw.installable !== false && !installed;
+                return (
+                  <div key={sw.id} className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 hover:border-violet-200 dark:hover:border-violet-800 transition-colors">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${installed ? (isRunning ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600') : 'bg-gray-200 dark:bg-gray-700 text-gray-400'}`}>
+                      {installed ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                    </div>
+                    <div className="w-32 shrink-0">
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">{sw.name}</span>
+                      {sw.required && <span className="block text-[10px] text-amber-600 dark:text-amber-500 font-medium">必需组件</span>}
+                    </div>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-mono flex-1 truncate bg-white dark:bg-gray-800 px-2 py-1 rounded border border-gray-100 dark:border-gray-700">
+                      {sw.value || (installed ? 'Docker 容器' : '未安装')}
+                    </span>
+                    {installed ? (
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-lg whitespace-nowrap ${isRunning ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'}`}>
+                        {isRunning ? '运行中' : (sw.status === 'exited' ? '已停止' : '已安装')}
+                      </span>
+                    ) : installable ? (
+                      <button
+                        onClick={() => handleInstall(sw.id)}
+                        disabled={installing === sw.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-50 transition-all shadow-sm whitespace-nowrap"
+                      >
+                        {installing === sw.id ? <RefreshCw size={12} className="animate-spin" /> : <Package size={12} />}
+                        {installing === sw.id ? '安装中...' : '一键安装'}
+                      </button>
+                    ) : (
+                      <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 whitespace-nowrap">
+                        未安装
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </>
   );
 }

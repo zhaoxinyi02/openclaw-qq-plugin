@@ -1,7 +1,7 @@
 {
   "name": "clawpanel-web",
   "private": true,
-  "version": "1.0.0",
+  "version": "5.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173",
@@ -11,16 +11,13 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
-    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-hot-toast": "^2.4.1",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.28.0",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
-    "@types/qrcode": "^1.5.6",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
